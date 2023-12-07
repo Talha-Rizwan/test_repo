@@ -30,4 +30,37 @@ Difference in Docker Images and Containers
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
 
-In summary, Docker images are static, immutable blueprints for applications, while containers are the dynamic, runnable instances of those images.
+Common Troubleshooting Issues and Solutions
+-------------------------------------------
+
+**1. Docker Daemon Not Running:**
+
+   - **Issue:** Docker commands fail because the Docker daemon is not running.
+   - **Solution:**
+     - Start the Docker daemon using::
+       
+         sudo systemctl start docker   # On systems using systemd
+     or::
+
+         sudo service docker start    # On systems using init.d
+
+**2. Insufficient Disk Space:**
+
+   - **Issue:** Running out of disk space on the host machine.
+   - **Solution:**
+     - Clean up unused Docker resources using::
+         docker system prune -a
+       
+**3. Port Already in Use:**
+
+   - **Issue:** Unable to start a container because the specified port is already in use.
+   - **Solution:**
+     - Choose a different port, or stop the process using the occupied port.
+
+**4. Image Not Found Locally:**
+
+   - **Issue:** Docker cannot find the specified image locally.
+   - **Solution:**
+     - Pull the image from the registry using::
+         docker pull image_name:tag
+  
