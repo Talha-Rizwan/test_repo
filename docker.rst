@@ -128,12 +128,40 @@ Here, `my-bridge-network` is the name of the network, and `container1` is the na
 
 **Inspecting Networks**
 
-To view details about a Docker network, you can use the `docker network inspect` command::
+To view details about a Docker network, use::
 
-   docker network inspect my-bridge-network
+   docker network inspect <network-name>
 
 This command provides information such as network ID, subnet, gateway, and connected containers.
 
+Docker Volumes
+--------------
+
+Docker volumes provide a flexible and persistent way to manage data in containers. Volumes allow data to be shared and stored independently of the container lifecycle, ensuring that data persists even when containers are stopped or removed. Volumes can be shared among multiple containers, facilitating data collaboration.
+
+**Creating Volumes**
+
+Docker volumes can be created::
+
+   docker volume create <volume-name>
+
+**Attaching Volumes to Containers**
+
+To use a volume, you need to attach it to a container during the container creation or when starting an existing container::
+
+   docker run -v <volume-name>:/path/in/container -d <image>
+
+Here, `/path/in/container` is the path where the volume is mounted inside the container.
+
+**Inspecting Volumes**
+
+To view details about a Docker volume::
+
+   docker volume inspect <volume-name>
+
+This command provides information about the volume, such as its name, driver, mount point, and labels.
+
+For more detailed information, refer to the official `Docker documentation <https://docs.docker.com/storage/volumes/>`_ on volumes.
 
 
 Common Troubleshooting
