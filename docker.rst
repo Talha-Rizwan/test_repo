@@ -30,8 +30,62 @@ Difference in Docker Images and Containers
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
 
-Common Troubleshooting Issues and Solutions
--------------------------------------------
+Docker Container Debugging
+--------------------------
+
+**- Viewing Container Logs**
+
+To check the logs of a running or stopped container, you can use::
+
+   docker logs <container-id>
+
+Adding the -f option allows you to follow the log output in real-time.
+
+**- Accessing a Container Shell**
+
+For interactive debugging, accessing a shell inside a running container can be invaluable. Use::
+
+   docker exec -it <container-id> /bin/bash
+
+Replace ``/bin/bash`` with the appropriate shell for your image (e.g., ``/bin/sh``).
+
+**- Inspecting Container Details**
+
+To get detailed information about a container, including its configuration, networking, and environment variables, use::
+
+   docker inspect <container-id>
+
+**- Attaching to a Running Container**
+
+If you need to interact with the main process of a running container, you can attach to it using the ``docker attach`` command:
+
+    docker attach <container-id>
+
+This allows you to see the output of the container's main process and send input to it. Press Ctrl + C to detach.
+
+**- Copying Files to/from a Container**
+
+To copy files between your local machine and a Docker container, use::
+
+   # Copy from local to container
+   docker cp local_file.txt container_id:/path/in/container/
+
+   # Copy from container to local
+   docker cp container_id:/path/in/container/local_file.txt .
+
+This is useful for moving configuration files, scripts, or debugging tools into or out of a container.
+
+**- Monitoring Container Resource Usage**
+
+To monitor the resource usage of a running container, you can use the ``docker stats`` command:
+
+   docker stats <container-id>
+
+This command provides real-time statistics on CPU usage, memory usage, network I/O, and block I/O.
+
+
+Common Troubleshooting
+----------------------
 
 **1. Docker Daemon Not Running:**
 
