@@ -45,6 +45,34 @@ Difference in Docker Images and Containers
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
 
+Dockerfile Example
+------------------
+
+This below example Dockerfile is for a Flask application and includes common Dockerfile instructions::
+
+   FROM ubuntu:20.04                                        # Use an official base image
+   
+   WORKDIR /app                                             # Set the working directory inside the container
+   
+   COPY . /app                                              # Copy the local directory's contents into the container at /app
+   
+   RUN apt-get update && \                                  # Install necessary dependencies
+       apt-get install -y \
+       python3 \
+       python3-pip \
+       && rm -rf /var/lib/apt/lists/*
+   
+   RUN pip3 install -r requirements.txt                     # Install Python dependencies
+   
+   EXPOSE 5000                                              # Expose port 5000 to the outside world
+   
+   ENV FLASK_APP=app.py                                     # Define environment variable
+   
+   CMD ["flask", "run", "--host=0.0.0.0"]                   # Command to run on container start
+
+
+
+
 Docker Container Debugging
 --------------------------
 
