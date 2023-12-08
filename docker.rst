@@ -13,7 +13,22 @@ Docker Images (Layered Architecture)
 
 Docker uses a layered architecture for images, providing efficiency and flexibility. Each layer in a Docker image represents a set of file changes or instructions in the Dockerfile. Layers are cached, and if there are no changes in a particular layer, Docker reuses the cached layer, speeding up the image build process.
 
-The layered architecture allows for incremental builds and facilitates sharing common layers between different images, reducing the overall storage space. This layered approach is fundamental to Docker's efficiency and is a key factor in its popularity.
+The layered architecture allows for incremental builds and facilitates sharing common layers between different images, reducing the overall storage space and improving effeciency.
+
+example redis needs the following images to complete its download::
+   
+   $ docker pull redis
+   Using default tag: latest
+   latest: Pulling from library/redis
+   1f7ce2fa46ab: Downloading [=======>                                           ]  4.483MB/29.15MB
+   3c6368585bf1: Download complete 
+   3911d271d7d8: Download complete 
+   ac88aa9d4021: Downloading [====================>                              ]    8.6MB/20.83MB
+   127cd75a68a2: Download complete 
+   4f4fb700ef54: Download complete 
+   f3993c1104fc: Download complete 
+
+
 
 Difference in Docker Images and Containers
 ------------------------------------------
@@ -117,4 +132,6 @@ Common Troubleshooting
    - **Solution:**
      - Pull the image from the registry using::
          docker pull image_name:tag
-  
+
+
+Checkout this `cheatsheet <https://quickref.me/docker.html> '__ for quick reach of common docker commands.
