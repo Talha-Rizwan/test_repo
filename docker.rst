@@ -15,7 +15,7 @@ Docker uses a layered architecture for images, providing efficiency and flexibil
 
 The layered architecture allows for incremental builds and facilitates sharing common layers between different images, reducing the overall storage space and improving effeciency.
 
-example redis needs the following images to complete its download::
+for example: redis image needs following images to complete itself::
    
    $ docker pull redis
    Using default tag: latest
@@ -50,7 +50,7 @@ Docker Container Debugging
 
 **- Viewing Container Logs**
 
-To check the logs of a running or stopped container, you can use::
+To check the logs of a container::
 
    docker logs <container-id>
 
@@ -66,21 +66,23 @@ Replace ``/bin/bash`` with the appropriate shell for your image (e.g., ``/bin/sh
 
 **- Inspecting Container Details**
 
-To get detailed information about a container, including its configuration, networking, and environment variables, use::
+To get detailed information about a container::
 
    docker inspect <container-id>
 
+This will provide information in all aspects including configuration, networking, and environment variables
+
 **- Attaching to a Running Container**
 
-If you need to interact with the main process of a running container, you can attach to it using the ``docker attach`` command:
+To interact with the main process of a running container::
 
     docker attach <container-id>
 
-This allows you to see the output of the container's main process and send input to it. Press Ctrl + C to detach.
+This allows you to see the output of the container's main process and send input to it.
 
 **- Copying Files to/from a Container**
 
-To copy files between your local machine and a Docker container, use::
+Files can be moved to/from your local machine and a Docker container::
 
    # Copy from local to container
    docker cp local_file.txt container_id:/path/in/container/
@@ -92,11 +94,46 @@ This is useful for moving configuration files, scripts, or debugging tools into 
 
 **- Monitoring Container Resource Usage**
 
-To monitor the resource usage of a running container, you can use the ``docker stats`` command:
+To monitor the resource usage of a running container::
 
    docker stats <container-id>
 
 This command provides real-time statistics on CPU usage, memory usage, network I/O, and block I/O.
+
+
+Docker Networking
+-----------------
+
+Docker provides a flexible and powerful networking model that allows containers to communicate with each other and with the outside world.
+
+Docker containers can be connected through various types of networks. To learn about all of them, visit `docker docs <https://docs.docker.com/network/drivers/>`_.
+
+**Creating a Bridge Network**
+
+The default network driver is the **bridge** network, which allows containers on the same host to communicate with each other using their container names. Each container connected to the bridge network gets its own IP address.
+
+To create a custom bridge network::
+
+   docker network create my-bridge-network
+
+This creates a new bridge network named `my-bridge-network`.
+
+**Connecting Containers to a Network**
+
+When starting a container, you can specify the network it should connect to:
+
+   docker run --network=my-bridge-network -d --name=container1 my-image
+
+Here, `my-bridge-network` is the name of the network, and `container1` is the name of the running container.
+
+**Inspecting Networks**
+
+To view details about a Docker network, you can use the `docker network inspect` command::
+
+   docker network inspect my-bridge-network
+
+This command provides information such as network ID, subnet, gateway, and connected containers.
+
 
 
 Common Troubleshooting
@@ -134,4 +171,4 @@ Common Troubleshooting
          docker pull image_name:tag
 
 
-Checkout this `cheatsheet <https://quickref.me/docker.html> '__ for quick reach of common docker commands.
+Checkout this `cheatsheet <https://quickref.me/docker.html/>`_. for a quick reach of common docker commands.
