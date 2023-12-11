@@ -238,6 +238,69 @@ To see and validate the composed configuration, use::
 
 Note: These commands can only execute in the same directory as ``docker-compose.yml``
 
+**Example:**
+Let’s dive deep into an example to learn how docker-compose actually saves the day.
+
+To clearify the picture and understand the struture of docker-compose, take a trivial example to create and start two docker containers i-e mongodb and mongo-express and connect them via a single docker network.
+
+1. Let's first do it without using docker-compose.
+
+- First create a docker-network for containers to communicate using just the container name::
+
+   Docker network create mongo-net
+
+- Start mongodb container::
+   
+   docker run -d \                                     (running in the detach mode)
+   -p 27017:27017 \                                    (specify the port)
+   -e MONGO_INITDB_ROOT_USERNAME=admin \               (specify environment variable)
+   -e MONGO_INITDB_ROOT_PASSWORD=password \            (specify environment variable)
+   –net mongo-network \					                   (network for container)
+   –name mongodb \	           					          (container name)
+   mongo 							                         (image name)
+
+- Start mongo-express container::
+
+   docker run -d \                                     (running in the detach mode)
+   -p 8081:8081 \                                      (specify the port)
+   -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin \          (specify environment variable)
+   -e ME_CONFIG_MONGODB_ADMINPASSWORD=password \       (specify environment variable)
+   -e ME_CONFIG_MONGODB_SERVER=mongodb\                (specify environment variable (mongodb container) )
+   –net mongo-network \                                (network for container)
+   –name mongo-express \                               (container name)
+   mongo-express                                       (image name)
+
+
+2. Now, let’s try to achieve the same outcome with a ``docker-compose.yml`` file
+
+
+- Structure of docker-compose::
+
+   Version: ‘<latest-version>’
+   Services:					                           (list of containers)
+   mongodb:				                              (container name)
+   		Image:mongo			                           (image need to create container)
+   		Ports:
+   			-27017:27017		                        (port host:container)
+   		Environment:				                     (environment variables)
+   			-MONGO_INITDB_ROOT_USERNAME=admin
+            -MONGO_INITDB_ROOT_PASSWORD=password
+   
+      mongo-express:					                        (container name)
+   		Image:mongo-express			                  (image need to create container)
+   		Ports:
+   			-8081:8081				                     (port host:container)
+   		Environment:					                  (environment variables)
+   			-ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+            -ME_CONFIG_MONGODB_ADMINPASSWORD=password
+            -ME_CONFIG_MONGODB_SERVER=mongodb
+
+
+You would have noticed that the network configuration is not there in the docker-compose. Docker compose takes care of creating a common network for containers, so we don’t have to create the network and specify the containers for the network.
+
+
+
+
 Common Troubleshooting
 ----------------------
 
