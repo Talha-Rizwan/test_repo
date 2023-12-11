@@ -277,26 +277,26 @@ To clearify the picture and understand the struture of docker-compose, take a tr
 - Structure of docker-compose::
 
    Version: ‘<latest-version>’
-   Services:					                           (list of containers)
-   mongodb:				                              (container name)
-   		Image:mongo			                           (image need to create container)
-   		Ports:
-   			-27017:27017		                        (port host:container)
-   		Environment:				                     (environment variables)
-   			-MONGO_INITDB_ROOT_USERNAME=admin
-            -MONGO_INITDB_ROOT_PASSWORD=password
+   Services:					                              (list of containers)
+   mongodb:				                                    (container name)
+   		image:mongo			                              (image need to create container)
+   		ports:
+   		   -27017:27017		                           (port host:container)
+   		environment:				                        (environment variables)
+                  -MONGO_INITDB_ROOT_USERNAME=admin
+                  -MONGO_INITDB_ROOT_PASSWORD=password
    
       mongo-express:					                        (container name)
-   		Image:mongo-express			                  (image need to create container)
-   		Ports:
-   			-8081:8081				                     (port host:container)
-   		Environment:					                  (environment variables)
-   			-ME_CONFIG_MONGODB_ADMINUSERNAME=admin
-            -ME_CONFIG_MONGODB_ADMINPASSWORD=password
-            -ME_CONFIG_MONGODB_SERVER=mongodb
+   		image:mongo-express			                     (image need to create container)
+   		ports:
+   		   -8081:8081				                        (port host:container)
+   		environment:					                     (environment variables)
+                  -ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+                  -ME_CONFIG_MONGODB_ADMINPASSWORD=password
+                  -ME_CONFIG_MONGODB_SERVER=mongodb
 
 
-You would have noticed that the network configuration is not there in the docker-compose. Docker compose takes care of creating a common network for containers, so we don’t have to create the network and specify the containers for the network.
+You would have noticed that the network configuration is not there in the docker-compose. Docker compose takes care of creating a common network for containers, so we don’t have to create the network manually.
 
 
 
