@@ -8,6 +8,30 @@ Overview
 
 Docker is a platform for developing, shipping, and running applications in containers. Containers allow developers to package an application with all of its dependencies, including libraries and runtime, and ship it as a single package. This ensures that the application runs consistently across different environments, making it easy to deploy and scale.
 
+Docker "Hello World"
+--------------------
+
+Getting started with Docker is as easy as running a "Hello World" container. This section helps you get started with the docker.
+
+1. **Install Docker:**
+
+   Make sure Docker is installed on your system. If not, follow the installation instructions for your operating system from the `official Docker website <https://docs.docker.com/get-docker/>`_
+
+2. **Run Hello World:**
+
+   Open a terminal and run the following command to download and run the "Hello World" Docker image::
+
+      docker run hello-world
+
+This command does not require root access and is designed to test the basic functionality of your Docker installation.
+
+If the installation is successful, you should see a message confirming that your Docker installation is working::
+   
+      Hello from Docker!
+   This message shows that your installation appears to be working correctly.
+
+Congratulations! You've successfully run the "Hello World" container with Docker without requiring root access. This is a simple yet crucial step in getting started with Docker.
+
 Docker Images (Layered Architecture)
 ------------------------------------
 
