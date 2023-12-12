@@ -30,8 +30,8 @@ for example: redis image needs following images to complete itself::
 
 
 
-Difference in Docker Images and Containers
-------------------------------------------
+Docker Images and Containers
+----------------------------
 
 **Docker Images:**
 
@@ -44,6 +44,38 @@ Difference in Docker Images and Containers
 - Containers are instances of Docker images that run in isolation on the host system.
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
+
+Docker Run vs Start
+~~~~~~~~~~~~~~~~~~~
+
+**docker run:**
+
+The primary purpose of ``docker run`` is to create and start a new container based on a specified image.
+
+*Key Points:*
+
+- If the specified image is not already available locally, ``docker run`` will attempt to pull it from the Docker Hub or another registry.
+- It creates a new container instance based on the specified image and runs the default command (or the command specified) inside the container.
+- Supports various options for configuring the container, such as specifying ports, volumes, environment variables, and more.
+
+*Example*::
+
+   docker run -d -p 8080:80 nginx
+
+**docker start:**
+
+The primary purpose of ``docker start`` is to start an existing stopped container.
+
+*Key Points:*
+
+- It is used when you have a container that was previously created and run (possibly using ``docker run``) and has been stopped.
+- It restarts a stopped container, using the same configuration and settings as when it was last stopped.
+
+*Example*::
+   
+   docker start my_container
+
+
 
 Dockerfile Example
 ------------------
