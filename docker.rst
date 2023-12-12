@@ -382,7 +382,11 @@ Common Troubleshooting
 
    - **Issue:** Unable to start a container because the specified port is already in use.
    - **Solution:**
-     - Choose a different port, or stop the process using the occupied port.
+     - Choose a different port, or stop the process engaging the occupied port.
+       To filter and display information about running Docker containers, based on the presence of a specific port, use::
+
+         docker ps | grep PORT
+
 
 **4. Image Not Found Locally:**
 
