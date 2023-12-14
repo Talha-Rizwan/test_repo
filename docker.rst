@@ -141,33 +141,6 @@ Despite the clarified distinctions outlined above, one may ponder why Docker nec
 ``run`` creates a **new/fresh** container of the image and executes it, you can create multiple clones having different ids and names of the same image while the ``start`` only relaunches the already **existing** container. ``start`` is particularly useful for situations where a container has been intentionally stopped, often with the ``docker stop`` command, and needs to be resumed without reconfiguring or recreating it. 
 
 
-
-Dockerfile Example
-------------------
-
-This below example Dockerfile is for a Flask application and includes common Dockerfile instructions::
-
-   FROM ubuntu:20.04                                        # Use an official base image
-   
-   WORKDIR /app                                             # Set the working directory inside the container
-   
-   COPY . /app                                              # Copy the local directory's contents into the container at /app
-   
-   RUN apt-get update && \                                  # Install necessary dependencies
-       apt-get install -y \
-       python3 \
-       python3-pip \
-       && rm -rf /var/lib/apt/lists/*
-   
-   RUN pip3 install -r requirements.txt                     # Install Python dependencies
-   
-   EXPOSE 5000                                              # Expose port 5000 to the outside world
-   
-   ENV FLASK_APP=app.py                                     # Define environment variable
-   
-   CMD ["flask", "run", "--host=0.0.0.0"]                   # Command to run on container start
-
-
 Docker Container Debugging
 --------------------------
 **- Listing Container**
@@ -409,6 +382,36 @@ To clearify the picture and understand the struture of docker-compose, take a tr
 
 
 You would have noticed that the network configuration is not there in the docker-compose. Docker compose takes care of creating a common network for containers, so we don’t have to create the network manually.
+
+Dockerfile (An Image Blueprint)
+-------------------------------
+
+Until this section, we have only explored the already build images but we also need to know how to build our own image and eventually build a container using that. A Dockerfile is a script to define the steps and instructions for building a Docker image. It serves as a blueprint for images. The Dockerfile specifies the base image, sets up the environment, installs dependencies, copies application code, and configures the container. It's a good idea to get familiar with the dockerfile commands and syntax which follows pretty much the same pattern across different usecases.
+
+This below example Dockerfile is for a Flask application and includes common Dockerfile instructions::
+
+   FROM ubuntu:20.04                                        # Use an official base image
+   
+   WORKDIR /app                                             # Set the working directory inside the container
+   
+   COPY . /app                                              # Copy the local directory's contents into the container at /app
+   
+   RUN apt-get update && \                                  # Install necessary dependencies
+       apt-get install -y \
+       python3 \
+       python3-pip \
+       && rm -rf /var/lib/apt/lists/*
+   
+   RUN pip3 install -r requirements.txt                     # Install Python dependencies
+   
+   EXPOSE 5000                                              # Expose port 5000 to the outside world
+   
+   ENV FLASK_APP=app.py                                     # Define environment variable
+   
+   CMD ["flask", "run", "--host=0.0.0.0"]                   # Command to run on container start
+
+
+
 
 Common Troubleshooting
 ----------------------
