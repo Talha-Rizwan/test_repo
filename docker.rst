@@ -411,6 +411,85 @@ This below example Dockerfile is for a Flask application and includes common Doc
    CMD ["flask", "run", "--host=0.0.0.0"]                   # Command to run on container start
 
 
+Now, Let's destructure this sample dockerfile and look deeply on each dockerfile command.
+
+**FROM:**
+
+Description: First line of every dockerfile is almost always ``FROM <image>``, so whatever image you’re building, you always want to base it on another existing image. 
+
+``FROM ubuntu:20.04``: a ready ubuntu image (tag:20.04) is being used to base our image on. This means that we are going to have ubuntu installed in our image so when we start a container and use CLI, we can see that ubuntu commands are available.
+
+Format: ``FROM <image>[:tag]``
+
+**WORKDIR:**
+
+Description: Sets the working directory for any RUN, CMD, ENTRYPOINT, COPY, and ADD instructions that follow it in the Dockerfile.
+
+``WORKDIR /app``: When the container is created and started from image, /home/app directory will be created inside the container file system and not on the host machine.  /app will now be the active directory where all ``RUN``, ``CMD`` etc will execute.
+
+Format: ``WORKDIR /path/to/directory``
+
+**COPY:**
+
+Description: Copies files or directories from the build context (local machine) to the container's filesystem. The difference between COPY and RUN is that RUN commands get executed inside the container but COPY command executes on the host.
+
+``COPY . /app``: This can copy the contect from host current directory as dockerfile to inside the specified directory of the container i-e /app
+
+Format: ``COPY <src> <dest>``
+
+ADD: Similar to COPY but has additional features, such as extracting compressed files and downloading files from URLs.
+
+**RUN:**
+
+Description: A command following 'RUN' executes in a new layer on top of the current image and commits the results. Used for installing packages, updating repositories, or any command-line operations. Using run, you can run any linux commands.
+
+``RUN pip3 install -r requirements.txt``: When the container is created and started from image, this will install all the requirements required for the project to run successfully. (likewise for in the local machine setup)
+
+Format: ``RUN <command>``
+
+**EXPOSE:**
+
+Description: Informs Docker that the container listens on specified network ports at runtime. It does not publish the ports; it is more of a documentation feature.
+
+``EXPOSE 5000``: Informs Docker that the container will listen on port 5000 at runtime.
+
+Format: ``EXPOSE <port> [<port>/<protocol>]``
+
+**ENV:**
+
+Description: Sets environment variables in the image. These variables are available to subsequent instructions in the Dockerfile. We have already done it using the ``docker run`` command or in ``docker-compose`` but this is another alternative to define these variables (though preferred way is to write in docker-compose). 
+
+``ENV FLASK_APP=app.py``: Sets an environment variable ``FLASK_APP`` with the value ``app.py``.
+
+Format: ``ENV <key> <value>``
+
+**CMD:**
+
+Description: Defines the default command to run when a container is started. If a command is provided during container startup, it overrides the CMD instruction. The CMD is always part of dockerfile, it executes an entrypoint linux command.
+
+``CMD ["flask", "run", "--host=0.0.0.0"]``: This command is equivilent as ``flask run --host=0.0.0.0`` on local machine which actually starts the server in the container
+
+An ambiguity may arose here for difference in ``CMD`` and ``RUN`` command as one can say that ``RUN flask run --host=0.0.0.0`` might also be used as an alternative but that is not it. CMD is an entrypoint command which can only be a single command in the dockerfile which in this case can run the server in container and nothing else.. 
+
+Format: ``CMD ["executable","param1","param2"]`` (exec form) or ``CMD command param1 param2`` (shell form)
+
+*ENTRYPOINT:* Similar to CMD, it allows you to configure a container to run a specific command. The difference is that the CMD command can be overridden, while ENTRYPOINT cannot.
+
+Image Build
+-----------
+
+In order to build an image from dockerfile, we have to provide two parameters. First is the name:tag (-t) and the second required parameter is path to dockerfile directory::
+
+   Docker build -t <name>[:tag] path/to/dockerfile
+
+
+Example : ``Docker build -t my-app:1.0 .``
+
+This will build the image from the dockerfile. Now the image prepared can allow us to create and start a container using ``docker run``::
+
+   docker run <image-name>:<tag>
+
+Now, whenever any change in the dockerfile, the image needs to be build again and so is the container.
 
 
 Common Troubleshooting
@@ -448,7 +527,7 @@ Common Troubleshooting
    - **Issue:** Docker cannot find the specified image locally.
    - **Solution:**
      - Pull the image from the registry using::
-         docker pull image_name:tag
+         docker pull <image-name>[:tag]
 
 
 Checkout this `cheatsheet <https://quickref.me/docker>`_. for a quick reach of common docker commands.
