@@ -32,6 +32,42 @@ If the installation is successful, you should see a message confirming that your
 
 Congratulations! You've successfully run the "Hello World" container with Docker without requiring root access. This is a simple yet crucial step in getting started with Docker.
 
+
+Docker VS Virtual Machines
+--------------------------
+
+The overview of docker ma lead to the idea that docker is another name for a VM but that's not true at all. Docker containerization and virtual machines (VMs) are both technologies that enable the isolation and deployment of applications, yet they differ significantly in their approaches and resource utilization. 
+
+Here's a concise comparison highlighting their distinctions:
+
+**1. Architecture**
+
+   Docker containers share the host system's kernel but encapsulate the application and its dependencies. They leverage containerization technology to provide a lightweight and efficient runtime environment. Containers are portable and can run consistently across various environments.
+
+   Virtual machines, on the other hand, emulate an entire operating system (OS) and run on a hypervisor, which is a layer between the hardware and the virtualized instances. VMs require a full OS stack for each instance, leading to a more substantial resource overhead.
+
+**2. Resource Utilization**
+
+   Containers are highly efficient in terms of resource utilization. They share the host OS's kernel, consuming fewer resources compared to VMs. This efficiency allows for faster startup times and facilitates the deployment of more containers on a given host.
+
+   VMs necessitate more resources since each instance runs a complete OS with its kernel. This can result in increased memory and storage overhead, potentially leading to slower boot times and more significant resource consumption.
+
+**3. Isolation**
+
+   Containers provide process-level isolation, ensuring that applications and their dependencies are encapsulated and run independently. However, they share the same OS kernel, which may pose security concerns in certain scenarios.
+
+   VMs offer stronger isolation by emulating entire OS environments. Each VM operates as an independent entity with its own kernel, enhancing security but at the cost of increased resource usage.
+
+**4. Portability**
+
+   Docker emphasizes portability. Containers encapsulate the application and its dependencies, making it easier to move and deploy applications across different environments consistently.
+
+   VMs, while portable to some extent, are typically bulkier due to their need for a complete OS. Moving VMs across different environments may involve more complexities.
+
+
+Docker containerization and virtual machines cater to different use cases, with Docker excelling in lightweight, portable applications, and VMs providing stronger isolation for more substantial workloads. Understanding the nuances between these technologies enables informed decisions when choosing the most suitable solution for specific deployment scenarios.
+
+
 Docker Images (Layered Architecture)
 ------------------------------------
 
@@ -53,7 +89,6 @@ for example: redis image needs following images to complete itself::
    f3993c1104fc: Download complete 
 
 
-
 Docker Images and Containers
 ----------------------------
 
@@ -69,10 +104,10 @@ Docker Images and Containers
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
 
-Docker Run vs Start
-~~~~~~~~~~~~~~~~~~~
+Docker Run vs Docker Start
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**docker run:**
+``docker run``:
 
 The primary purpose of ``docker run`` is to create and start a new container based on a specified image.
 
@@ -86,7 +121,7 @@ The primary purpose of ``docker run`` is to create and start a new container bas
 
    docker run -d -p 8080:80 nginx
 
-**docker start:**
+``docker start``:
 
 The primary purpose of ``docker start`` is to start an existing stopped container.
 
@@ -98,6 +133,12 @@ The primary purpose of ``docker start`` is to start an existing stopped containe
 *Example*::
    
    docker start my_container
+
+
+
+Despite the clarified distinctions outlined above, one may ponder why Docker necessitates two separate commands for container execution. Let's resolve this potential ambiguity.
+
+``run`` creates a **new/fresh** container of the image and executes it, you can create multiple clones having different ids and names of the same image while the ``start`` only relaunches the already **existing** container. ``start`` is particularly useful for situations where a container has been intentionally stopped, often with the ``docker stop`` command, and needs to be resumed without reconfiguring or recreating it. 
 
 
 
@@ -127,10 +168,15 @@ This below example Dockerfile is for a Flask application and includes common Doc
    CMD ["flask", "run", "--host=0.0.0.0"]                   # Command to run on container start
 
 
-
-
 Docker Container Debugging
 --------------------------
+**- Listing Container**
+
+To check all the running containers/processes::
+
+   docker ps
+
+Adding the ``-a`` option allows you to view all containers (including stopped).
 
 **- Viewing Container Logs**
 
@@ -138,7 +184,7 @@ To check the logs of a container::
 
    docker logs <container-id>
 
-Adding the -f option allows you to follow the log output in real-time.
+Adding the ``-f`` option allows you to follow the log output in real-time.
 
 **- Accessing a Container Shell**
 
@@ -154,7 +200,18 @@ To get detailed information about a container::
 
    docker inspect <container-id>
 
-This will provide information in all aspects including configuration, networking, and environment variables
+This will provide a JSON-formatted response with comprehensive details including configuration, networking, and environment variables.
+
+You can use the ``--format`` option to filter and format specific details from the docker inspect command.
+For example, to get only the container's IP address, you can use::
+
+   docker inspect --format='{{ .NetworkSettings.IPAddress }}' container_id
+
+Similarly, to view only the container's environment variables::
+
+   docker inspect --format='{{ .Config.Env }}' container_id
+
+The information extracted from inspect is useful for troubleshooting, debugging, and understanding the runtime environment of your containers.
 
 **- Attaching to a Running Container**
 
@@ -255,7 +312,6 @@ Managing all containers, networks, volumes can sometimes get a little overwhelme
 
 Docker Compose is a tool for defining and running multi-container Docker applications. It allows you to describe all services, networks, and volumes in a single `docker-compose.yml` file, serves as a blueprint for defining the entire application stack, making it easy to manage and deploy complex applications.
 
-
 **Key Concepts:**
 
 - *Services:* Services represent the containers that make up the application.
@@ -295,6 +351,7 @@ To see and validate the composed configuration, use::
 Note: These commands can only execute in the same directory as ``docker-compose.yml``
 
 **Example:**
+
 Let’s dive deep into an example to learn how docker-compose actually saves the day.
 
 To clearify the picture and understand the struture of docker-compose, take a trivial example to create and start two docker containers i-e mongodb and mongo-express and connect them via a single docker network.
@@ -329,7 +386,6 @@ To clearify the picture and understand the struture of docker-compose, take a tr
 
 2. Now, let’s try to achieve the same outcome with a ``docker-compose.yml`` file
 
-
 - Structure of docker-compose::
 
    Version: ‘<latest-version>’
@@ -353,9 +409,6 @@ To clearify the picture and understand the struture of docker-compose, take a tr
 
 
 You would have noticed that the network configuration is not there in the docker-compose. Docker compose takes care of creating a common network for containers, so we don’t have to create the network manually.
-
-
-
 
 Common Troubleshooting
 ----------------------
@@ -382,11 +435,10 @@ Common Troubleshooting
 
    - **Issue:** Unable to start a container because the specified port is already in use.
    - **Solution:**
-     - Choose a different port, or stop the process engaging the occupied port.
-       To filter and display information about running Docker containers, based on the presence of a specific port, use::
+     - Choose a different port, or stop the process using the occupied port.
+       hint: To filter and display information about running Docker containers, based on the presence of a specific port, use::
 
-         docker ps | grep PORT
-
+         docker ps | grep <PORT>
 
 **4. Image Not Found Locally:**
 
@@ -396,4 +448,4 @@ Common Troubleshooting
          docker pull image_name:tag
 
 
-Checkout this `cheatsheet <https://quickref.me/docker.html/>`_. for a quick reach of common docker commands.
+Checkout this `cheatsheet <https://quickref.me/docker>`_. for a quick reach of common docker commands.
