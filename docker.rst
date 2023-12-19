@@ -13,11 +13,13 @@ Docker "Hello World"
 
 Getting started with Docker is as easy as running a "Hello World" container. This section helps you get started with the docker.
 
-1. **Install Docker:**
+1. Install Docker
+~~~~~~~~~~~~~~~~~
 
    Make sure Docker is installed on your system. If not, follow the installation instructions for your operating system from the `official Docker website <https://docs.docker.com/get-docker/>`_
 
-2. **Run Hello World:**
+2. Run Hello World
+~~~~~~~~~~~~~~~~~~
 
    Open a terminal and run the following command to download and run the "Hello World" Docker image::
 
@@ -32,6 +34,11 @@ If the installation is successful, you should see a message confirming that your
 
 Congratulations! You've successfully run the "Hello World" container with Docker without requiring root access. This is a simple yet crucial step in getting started with Docker.
 
+If user root access is needed, then they should refer to `this <https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user>`__ and run::
+
+   sudo usermod -aG docker $USER
+
+This will add the current user to the "docker" group on a Linux system.
 
 Docker VS Virtual Machines
 --------------------------
@@ -40,25 +47,29 @@ The overview of docker ma lead to the idea that docker is another name for a VM 
 
 Here's a concise comparison highlighting their distinctions:
 
-**1. Architecture**
+1. Architecture
+~~~~~~~~~~~~~~~
 
    Docker containers share the host system's kernel but encapsulate the application and its dependencies. They leverage containerization technology to provide a lightweight and efficient runtime environment. Containers are portable and can run consistently across various environments.
 
    Virtual machines, on the other hand, emulate an entire operating system (OS) and run on a hypervisor, which is a layer between the hardware and the virtualized instances. VMs require a full OS stack for each instance, leading to a more substantial resource overhead.
 
-**2. Resource Utilization**
+2. Resource Utilization
+~~~~~~~~~~~~~~~~~~~~~~~
 
    Containers are highly efficient in terms of resource utilization. They share the host OS's kernel, consuming fewer resources compared to VMs. This efficiency allows for faster startup times and facilitates the deployment of more containers on a given host.
 
    VMs necessitate more resources since each instance runs a complete OS with its kernel. This can result in increased memory and storage overhead, potentially leading to slower boot times and more significant resource consumption.
 
-**3. Isolation**
+3. Isolation
+~~~~~~~~~~~~
 
    Containers provide process-level isolation, ensuring that applications and their dependencies are encapsulated and run independently. However, they share the same OS kernel, which may pose security concerns in certain scenarios.
 
    VMs offer stronger isolation by emulating entire OS environments. Each VM operates as an independent entity with its own kernel, enhancing security but at the cost of increased resource usage.
 
-**4. Portability**
+4. Portability
+~~~~~~~~~~~~~~
 
    Docker emphasizes portability. Containers encapsulate the application and its dependencies, making it easier to move and deploy applications across different environments consistently.
 
@@ -92,32 +103,35 @@ for example: redis image needs following images to complete itself::
 Docker Images and Containers
 ----------------------------
 
-**Docker Images:**
+Docker Images
+~~~~~~~~~~~~~
 
 - Docker images are the building blocks for containers.
 - They are lightweight, standalone, and executable packages that include everything needed to run a piece of software, including the code, runtime, libraries, and system tools.
 - Images are defined by a set of layers, each representing a specific instruction in the Dockerfile.
 
-**Docker Containers:**
+Docker Containers
+~~~~~~~~~~~~~~~~~
 
 - Containers are instances of Docker images that run in isolation on the host system.
 - They encapsulate the application and its dependencies, ensuring consistent behavior across different environments.
 - Containers are portable, enabling seamless deployment across various environments without modification.
 
 Docker Run vs Docker Start
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 ``docker run``:
 
 The primary purpose of ``docker run`` is to create and start a new container based on a specified image.
 
-*Key Points:*
+Key Points
+~~~~~~~~~~
 
 - If the specified image is not already available locally, ``docker run`` will attempt to pull it from the Docker Hub or another registry.
 - It creates a new container instance based on the specified image and runs the default command (or the command specified) inside the container.
 - Supports various options for configuring the container, such as specifying ports, volumes, environment variables, and more.
 
-*Example*::
+Example::
 
    docker run -d -p 8080:80 nginx
 
@@ -125,16 +139,14 @@ The primary purpose of ``docker run`` is to create and start a new container bas
 
 The primary purpose of ``docker start`` is to start an existing stopped container.
 
-*Key Points:*
+Key Points
 
 - It is used when you have a container that was previously created and run (possibly using ``docker run``) and has been stopped.
 - It restarts a stopped container, using the same configuration and settings as when it was last stopped.
 
-*Example*::
+Example::
    
    docker start my_container
-
-
 
 Despite the clarified distinctions outlined above, one may ponder why Docker necessitates two separate commands for container execution. Let's resolve this potential ambiguity.
 
@@ -143,7 +155,9 @@ Despite the clarified distinctions outlined above, one may ponder why Docker nec
 
 Docker Container Debugging
 --------------------------
-**- Listing Container**
+
+Listing Container
+~~~~~~~~~~~~~~~~~~~
 
 To check all the running containers/processes::
 
@@ -151,7 +165,8 @@ To check all the running containers/processes::
 
 Adding the ``-a`` option allows you to view all containers (including stopped).
 
-**- Viewing Container Logs**
+Viewing Container Logs
+~~~~~~~~~~~~~~~~~~~~~~
 
 To check the logs of a container::
 
@@ -159,7 +174,8 @@ To check the logs of a container::
 
 Adding the ``-f`` option allows you to follow the log output in real-time.
 
-**- Accessing a Container Shell**
+Accessing a Container Shell
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For interactive debugging, accessing a shell inside a running container can be invaluable. Use::
 
@@ -167,7 +183,8 @@ For interactive debugging, accessing a shell inside a running container can be i
 
 Replace ``/bin/bash`` with the appropriate shell for your image (e.g., ``/bin/sh``).
 
-**- Inspecting Container Details**
+Inspecting Container Details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To get detailed information about a container::
 
@@ -186,7 +203,8 @@ Similarly, to view only the container's environment variables::
 
 The information extracted from inspect is useful for troubleshooting, debugging, and understanding the runtime environment of your containers.
 
-**- Attaching to a Running Container**
+Attaching to a Running Container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To interact with the main process of a running container::
 
@@ -194,7 +212,8 @@ To interact with the main process of a running container::
 
 This allows you to see the output of the container's main process and send input to it.
 
-**- Copying Files to/from a Container**
+Copying Files to/from a Container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Files can be moved to/from your local machine and a Docker container::
 
@@ -206,7 +225,8 @@ Files can be moved to/from your local machine and a Docker container::
 
 This is useful for moving configuration files, scripts, or debugging tools into or out of a container.
 
-**- Monitoring Container Resource Usage**
+Monitoring Container Resource Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To monitor the resource usage of a running container::
 
@@ -222,7 +242,8 @@ Docker provides a flexible and powerful networking model that allows containers 
 
 Docker containers can be connected through various types of networks. To learn about all of them, visit `docker docs <https://docs.docker.com/network/drivers/>`_.
 
-**Creating a Bridge Network**
+Creating a Bridge Network
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The default network driver is the **bridge** network, which allows containers on the same host to communicate with each other using their container names. Each container connected to the bridge network gets its own IP address.
 
@@ -232,7 +253,8 @@ To create a custom bridge network::
 
 This creates a new bridge network named `my-bridge-network`.
 
-**Connecting Containers to a Network**
+Connecting Containers to a Network
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When starting a container, you can specify the network it should connect to:
 
@@ -240,7 +262,8 @@ When starting a container, you can specify the network it should connect to:
 
 Here, `my-bridge-network` is the name of the network, and `container1` is the name of the running container.
 
-**Inspecting Networks**
+Inspecting Networks
+~~~~~~~~~~~~~~~~~~~
 
 To view details about a Docker network, use::
 
@@ -253,13 +276,15 @@ Docker Volumes
 
 Docker volumes provide a flexible and persistent way to manage data in containers. Volumes allow data to be shared and stored independently of the container lifecycle, ensuring that data persists even when containers are stopped or removed. Volumes can be shared among multiple containers, facilitating data collaboration.
 
-**Creating Volumes**
+Creating Volumes
+~~~~~~~~~~~~~~~~
 
 Docker volumes can be created::
 
    docker volume create <volume-name>
 
-**Attaching Volumes to Containers**
+Attaching Volumes to Containers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use a volume, you need to attach it to a container during the container creation or when starting an existing container::
 
@@ -267,7 +292,8 @@ To use a volume, you need to attach it to a container during the container creat
 
 Here, `/path/in/container` is the path where the volume is mounted inside the container.
 
-**Inspecting Volumes**
+Inspecting Volumes
+~~~~~~~~~~~~~~~~~~
 
 To view details about a Docker volume::
 
@@ -285,15 +311,17 @@ Managing all containers, networks, volumes can sometimes get a little overwhelme
 
 Docker Compose is a tool for defining and running multi-container Docker applications. It allows you to describe all services, networks, and volumes in a single `docker-compose.yml` file, serves as a blueprint for defining the entire application stack, making it easy to manage and deploy complex applications.
 
-**Key Concepts:**
+Key Concepts
+~~~~~~~~~~~~
 
-- *Services:* Services represent the containers that make up the application.
-- *Networking:* Defines how containers communicate with each other.
-- *Volume Mounts:* Persists data generated by and used by containers.
-- *Environment Variables and Configuration:* Docker Compose allows you to set environment variables for services, making it simple to configure different environments (e.g., development, testing, production) without modifying the application code.
-- *Scaling:* Docker Compose makes it easy to scale services horizontally by specifying the number of replicas for a service. This is useful for load balancing and improving application performance.
+- Services: Services represent the containers that make up the application.
+- Networking: Defines how containers communicate with each other.
+- Volume Mounts: Persists data generated by and used by containers.
+- Environment Variables and Configuration: Docker Compose allows you to set environment variables for services, making it simple to configure different environments (e.g., development, testing, production) without modifying the application code.
+- Scaling: Docker Compose makes it easy to scale services horizontally by specifying the number of replicas for a service. This is useful for load balancing and improving application performance.
 
-**Docker Compose Common Commands:**
+Docker Compose Common Commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Navigate to the directory containing your ``docker-compose.yml`` file and run::
 
@@ -323,7 +351,8 @@ To see and validate the composed configuration, use::
 
 Note: These commands can only execute in the same directory as ``docker-compose.yml``
 
-**Example:**
+Example
+~~~~~~~
 
 Let’s dive deep into an example to learn how docker-compose actually saves the day.
 
@@ -413,23 +442,29 @@ This below example Dockerfile is for a Flask application and includes common Doc
 
 Now, Let's destructure this sample dockerfile and look deeply on each dockerfile command.
 
-**FROM:**
+`FROM <https://docs.docker.com/engine/reference/builder/#from>`__
+~~~~~~
 
 Description: First line of every dockerfile is almost always ``FROM <image>``, so whatever image you’re building, you always want to base it on another existing image. 
 
-``FROM ubuntu:20.04``: a ready ubuntu image (tag:20.04) is being used to base our image on. This means that we are going to have ubuntu installed in our image so when we start a container and use CLI, we can see that ubuntu commands are available.
+``FROM ubuntu:20.04``: A ready ubuntu image (tag:20.04) is being used to base our image on. This means that we are going to have ubuntu installed in our image so when we start a container and use CLI, we can see that ubuntu commands are available.
 
-Format: ``FROM <image>[:tag]``
+It's important to note that unless a registry is specified, it is assumed that images are pulled from `DockerHub <https://hub.docker.com/>`__ . Users can search for specific existing imaage tags. For instance, to explore available Ubuntu tags, visit https://hub.docker.com/_/ubuntu/tags?page=1&name=20.
 
-**WORKDIR:**
 
-Description: Sets the working directory for any RUN, CMD, ENTRYPOINT, COPY, and ADD instructions that follow it in the Dockerfile.
+Format: ``FROM <image>[:version]``
+
+`WORKDIR <https://docs.docker.com/engine/reference/builder/#workdir>`__
+~~~~~~~~
+
+Description: Sets the working directory for any RUN, CMD, ENTRYPOINT, COPY, and ADD instructions that follow it in the Dockerfile. WORKDIR is necessary because Dockerfile authors can't just ``RUN cd /some/path`` That path would not be preserved across RUN instructions.
 
 ``WORKDIR /app``: When the container is created and started from image, /home/app directory will be created inside the container file system and not on the host machine.  /app will now be the active directory where all ``RUN``, ``CMD`` etc will execute.
 
 Format: ``WORKDIR /path/to/directory``
 
-**COPY:**
+`COPY <https://docs.docker.com/engine/reference/builder/#copy>`__
+~~~~~
 
 Description: Copies files or directories from the build context (local machine) to the container's filesystem. The difference between COPY and RUN is that RUN commands get executed inside the container but COPY command executes on the host.
 
@@ -437,9 +472,10 @@ Description: Copies files or directories from the build context (local machine) 
 
 Format: ``COPY <src> <dest>``
 
-ADD: Similar to COPY but has additional features, such as extracting compressed files and downloading files from URLs.
+`ADD <https://docs.docker.com/engine/reference/builder/#add>`__ : Similar to COPY but has additional features, such as extracting compressed files and downloading files from URLs.
 
-**RUN:**
+`RUN <https://docs.docker.com/engine/reference/builder/#run>`__
+~~~~
 
 Description: A command following 'RUN' executes in a new layer on top of the current image and commits the results. Used for installing packages, updating repositories, or any command-line operations. Using run, you can run any linux commands.
 
@@ -447,15 +483,20 @@ Description: A command following 'RUN' executes in a new layer on top of the cur
 
 Format: ``RUN <command>``
 
-**EXPOSE:**
+`EXPOSE <https://docs.docker.com/engine/reference/builder/#expose>`__
+~~~~~~~
 
-Description: Informs Docker that the container listens on specified network ports at runtime. It does not publish the ports; it is more of a documentation feature.
+Description: Informs Docker that the container listens on specified network ports at runtime. It does not publish the ports to the host machine; rather, it is more of a documentation feature. 
 
 ``EXPOSE 5000``: Informs Docker that the container will listen on port 5000 at runtime.
 
 Format: ``EXPOSE <port> [<port>/<protocol>]``
 
-**ENV:**
+Note: Expose doesn't inherently make the specified ports accessible from outside the container. This can lead to confusion, as developers might expect the container to be reachable on the specified ports directly. Instead, use `-p` or `--publish` when running the container to explicitly publish and map ports.
+
+
+`ENV <https://docs.docker.com/engine/reference/builder/#env>`__
+~~~~
 
 Description: Sets environment variables in the image. These variables are available to subsequent instructions in the Dockerfile. We have already done it using the ``docker run`` command or in ``docker-compose`` but this is another alternative to define these variables (though preferred way is to write in docker-compose). 
 
@@ -463,42 +504,99 @@ Description: Sets environment variables in the image. These variables are availa
 
 Format: ``ENV <key> <value>``
 
-**CMD:**
+Note: Avoid attempting to set environment variables using ``RUN export MY_VAR=somevalue`` Instead, use the ``ENV`` instruction. For example, to add a path to the environment, use::
+
+   ENV PATH=/some/path:${PATH}
+
+Defined environment variables can be referenced using the `$VAR` syntax in subsequent instructions in the Dockerfile. This ensures a consistent and reliable way to manage environment configurations within your Docker image.
+
+`CMD <https://docs.docker.com/engine/reference/builder/#cmd>`__
+~~~~
 
 Description: Defines the default command to run when a container is started. If a command is provided during container startup, it overrides the CMD instruction. The CMD is always part of dockerfile, it executes an entrypoint linux command.
 
-``CMD ["flask", "run", "--host=0.0.0.0"]``: This command is equivilent as ``flask run --host=0.0.0.0`` on local machine which actually starts the server in the container
+``CMD ["flask", "run", "--host=0.0.0.0"]``: This command is equivilent to ``flask run --host=0.0.0.0`` on local machine which actually starts the server in the container
 
-An ambiguity may arose here for difference in ``CMD`` and ``RUN`` command as one can say that ``RUN flask run --host=0.0.0.0`` might also be used as an alternative but that is not it. CMD is an entrypoint command which can only be a single command in the dockerfile which in this case can run the server in container and nothing else.. 
+An ambiguity may arise here between ``CMD`` and ``RUN`` command as one can say that ``RUN flask run --host=0.0.0.0`` might also be used as an alternative but that is not it. CMD is an entrypoint command which can only be a single command in the dockerfile which in this case can run the server in container and nothing else.. 
 
 Format: ``CMD ["executable","param1","param2"]`` (exec form) or ``CMD command param1 param2`` (shell form)
 
-*ENTRYPOINT:* Similar to CMD, it allows you to configure a container to run a specific command. The difference is that the CMD command can be overridden, while ENTRYPOINT cannot.
+`ENTRYPOINT <https://docs.docker.com/engine/reference/builder/#entrypoint>`__ Similar to CMD, it allows you to configure a container to run a specific command. The difference is that the CMD command can be overridden by the container command-line args, while ENTRYPOINT cannot. 
+
+To conclude, `ENTRYPOINT`` is used to define the main executable of the container, while ``CMD`` is used to provide default arguments for that executable or to specify a default command if there is no ``ENTRYPOINT``. They can be used together to create a flexible and customizable container. If you want to explore further about ENTRYPOINT and CMD, you can refer `here <https://spacelift.io/blog/docker-entrypoint-vs-cmd>`__
+
+To explore this section further, you can always refer to `docker official docs <https://docs.docker.com/engine/reference/builder/>`__.
 
 Image Build
 -----------
 
-In order to build an image from dockerfile, we have to provide two parameters. First is the name:tag (-t) and the second required parameter is path to dockerfile directory::
+In order to build an image from dockerfile, we have to provide two parameters. First is the  (-t) tag and the second required parameter is path to dockerfile directory::
 
-   Docker build -t <name>[:tag] path/to/dockerfile
+   Docker build -t <name>[:version] path/to/dockerfile
 
 
 Example : ``Docker build -t my-app:1.0 .``
 
 This will build the image from the dockerfile. Now the image prepared can allow us to create and start a container using ``docker run``::
 
-   docker run <image-name>:<tag>
+   docker run <image-name>:<version>
 
 Now, whenever any change in the dockerfile, the image needs to be build again and so is the container.
+
+Multi-Stage Build
+-----------------
+
+Docker multi-stage builds allow you to create more efficient Docker images by using multiple `FROM` instructions in a single Dockerfile by splitting your dockerfile into stages. This way, you can build the application in one stage and copy only the necessary components that the application needs to run to the final image. This technique is particularly useful when you need build tools and dependencies during the build stage but want to keep the final image small and optimized.
+
+Benefits
+~~~~~~~~
+
+   1. Reduced Image Size: Multi-stage builds help minimize the size of the final Docker image by discarding unnecessary artifacts and dependencies from intermediate build stages.
+
+   2. Isolation of Build Dependencies: Build dependencies and tools are isolated to the build stage, ensuring that only the necessary artifacts are included in the final image.
+
+   3. Improved Security: By removing unnecessary components in the final stage, you reduce the attack surface and enhance the security of your Docker images.
+
+Each stage in the Dockerfile will generate its container image. However, when the build process concludes, Docker consolidates only one of these images into the local container registry (default image = final stage).If you prefer to use the image from a different stage, you can specify the target stage using the ``target=<stage name>`` option with the ``docker build`` command.
+
+Example
+~~~~~~~
+::
+
+   # Build Stage
+   FROM node:14 AS builder
+
+   WORKDIR /app
+
+   COPY package*.json ./
+   RUN npm install
+
+   COPY . .
+
+   # Build the application
+   RUN npm run build
+
+   # Final Stage
+   FROM nginx:alpine
+
+   # Copy built artifacts from the build stage to the final stage
+   COPY --from=builder /app/dist /usr/share/nginx/html
+
+   EXPOSE 80
+
+   CMD ["nginx", "-g", "daemon off;"]
+
+This example demonstrates a Node.js application where the build stage installs dependencies, builds the application, and the final stage copies only the **necessary artifacts** to an Nginx base image, Hence, resulting in a more smaller and optimized image.
 
 
 Common Troubleshooting
 ----------------------
 
-**1. Docker Daemon Not Running:**
+1. Docker Daemon Not Running
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   - **Issue:** Docker commands fail because the Docker daemon is not running.
-   - **Solution:**
+   - Issue: Docker commands fail because the Docker daemon is not running.
+   - Solution:
      - Start the Docker daemon using::
        
          sudo systemctl start docker   # On systems using systemd
@@ -506,28 +604,64 @@ Common Troubleshooting
 
          sudo service docker start    # On systems using init.d
 
-**2. Insufficient Disk Space:**
+2. Insufficient Disk Space
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   - **Issue:** Running out of disk space on the host machine.
-   - **Solution:**
-     - Clean up unused Docker resources using::
-         docker system prune -a
+   - Issue: Running out of disk space on the host machine.
+   - Solution:
+      1. Identify Disk Space Usage
+          
+         Before taking any corrective actions, it's essential to understand what is consuming the disk space.
+         Run the following command to get a breakdown of Docker's disk usage::
+            
+            docker system df
+          
+         This command will show the usage of data in volumes, images, and containers. Analyze the output to identify which source is using up the most space.
+        
+      2. Clean up Unused Docker Resources
+          
+         Once you've identified the source of high disk usage, you can proceed to clean up unused Docker resources. Use the following command::
+      
+            docker system prune -a
+             
+         This command removes all stopped containers, dangling images, and unused networks and volumes. It helps free up disk space by removing unnecessary Docker artifacts.
+   
+      3. Additional Cleanup (if needed)
+          
+         Depending on your analysis in Step 1, you might need to perform more targeted cleanup. For example:
+             
+            - To remove specific images, use::
+               
+               docker image rm <image_id>
+              
+            - To remove specific containers, use::
+      
+               docker container rm <container_id>
+              
+            - To remove specific volumes, use::
+              
+               docker volume rm <volume_name>
+              
+         Be cautious when removing specific resources, as it may impact running containers or services.
+
        
-**3. Port Already in Use:**
+3. Port Already in Use
+~~~~~~~~~~~~~~~~~~~~~~
 
-   - **Issue:** Unable to start a container because the specified port is already in use.
-   - **Solution:**
+   - Issue: Unable to start a container because the specified port is already in use.
+   - Solution:
      - Choose a different port, or stop the process using the occupied port.
        hint: To filter and display information about running Docker containers, based on the presence of a specific port, use::
 
          docker ps | grep <PORT>
 
-**4. Image Not Found Locally:**
+4. Image Not Found Locally
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   - **Issue:** Docker cannot find the specified image locally.
-   - **Solution:**
+   - Issue: Docker cannot find the specified image locally.
+   - Solution:
      - Pull the image from the registry using::
-         docker pull <image-name>[:tag]
+         docker pull image_name:version
 
 
 Checkout this `cheatsheet <https://quickref.me/docker>`_. for a quick reach of common docker commands.
