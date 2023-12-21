@@ -634,6 +634,24 @@ To learn more about this, refer to the `docker buildkit <https://docs.docker.com
 
 - For large projects, consider using a remote build context rather than sending all files to the Docker daemon. This can be achieved using the ``docker build - < Dockerfile`` allowing the Dockerfile to be read from stdin. To learn in more depth about this, visit `docker remote content <https://docs.docker.com/build/building/context/#remote-context>`__.
 
+Continuous Integration and Deployment with Docker
+---------------------------------------------------------
+
+Continuous Integration (CI) and Continuous Deployment (CD) are essential practices in modern software development that aim to streamline the process of building, testing, and deploying code changes. When combined with Docker, offer a powerful solution for automating and enhancing the software delivery lifecycle.
+
+Continuous Integration (CI)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CI involves automatically integrating code changes from multiple contributors into a shared repository. CI tools like `Jenkins <https://www.jenkins.io/>`__, `Travis CI <https://www.travis-ci.com/>`__, or `GitLab CI <https://about.gitlab.com/solutions/continuous-integration/>`__ can be configured to trigger automated builds whenever changes are pushed to the repository. During the CI process, Docker images are built, and tests are executed within isolated containers, ensuring reproducibility and consistency.
+
+Continuous Deployment (CD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CD extends CI by automatically deploying code to production or staging environments after successful integration and testing. Docker provides a lightweight and portable environment for applications, allowing seamless deployment across different environments. CD tools, such as `Kubernetes <https://kubernetes.io/>`__, `Docker Swarm <https://docs.docker.com/engine/swarm/>`__, or cloud-based solutions like `AWS ECS <https://aws.amazon.com/ecs/>`__, can orchestrate the deployment of Docker containers to various target environments.
+
+
+
+
 Common Troubleshooting
 ----------------------
 
