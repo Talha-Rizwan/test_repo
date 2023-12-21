@@ -228,11 +228,12 @@ This is useful for moving configuration files, scripts, or debugging tools into 
 Monitoring Container Resource Usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To monitor the resource usage of a running container::
+Monitoring container performance involves tracking various metrics, such as CPU usage, memory utilization, network activity, and storage metrics. To monitor the resource usage of a running container::
 
    docker stats <container-id>
 
 This command provides real-time statistics on CPU usage, memory usage, network I/O, and block I/O.
+Many third-party monitoring tools like Prometheus, Grafana, and Datadog can also be engaged with Docker to provide historical analysis, visualization of container metrics etc. To explore more about them, visit `here <https://sematext.com/blog/docker-container-monitoring/>`__
 
 
 Docker Networking
@@ -543,24 +544,37 @@ This will build the image from the dockerfile. Now the image prepared can allow 
 
 Now, whenever any change in the dockerfile, the image needs to be build again and so is the container.
 
-Multi-Stage Build
------------------
+Build Optimization
+------------------
+
+Optimzing docker images for build is a fundamental step in containerized application development. Efficient Docker builds not only save time during development but also contribute to faster deployments and reduce the overall footprint of containerized applications. Always keep the below points in mind to generate optimized images.
+
+1. Layer Caching
+~~~~~~~~~~~~~~~~
+
+- Leveraging Cache Layers: Docker uses a layered file system, and each instruction in a Dockerfile creates a new layer. Utilizing caching effectively can significantly speed up builds. Place instructions that are less likely to change frequently (e.g., package installations) early in the Dockerfile to maximize cache reuse.
+
+- Explicit Cache Invalidation: When an instruction is expected to change frequently, use explicit cache invalidation points. For instance, include a timestamp or version number in the instruction to force Docker to ignore the cache for subsequent steps when the input changes.
+
+
+2. Image Multi-Stage Build
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Docker multi-stage builds allow you to create more efficient Docker images by using multiple `FROM` instructions in a single Dockerfile by splitting your dockerfile into stages. This way, you can build the application in one stage and copy only the necessary components that the application needs to run to the final image. This technique is particularly useful when you need build tools and dependencies during the build stage but want to keep the final image small and optimized.
 
-Benefits
-~~~~~~~~
+**Benefits**
 
    1. Reduced Image Size: Multi-stage builds help minimize the size of the final Docker image by discarding unnecessary artifacts and dependencies from intermediate build stages.
 
-   2. Isolation of Build Dependencies: Build dependencies and tools are isolated to the build stage, ensuring that only the necessary artifacts are included in the final image.
+   2. Enhanced Build Performance: Multi-stage builds help parallelize the build process, enabling independent stages to be built simultaneously. This parallelization capability allows Docker to cache intermediate layers, making subsequent builds significantly faster by executing only the changed layers.
 
-   3. Improved Security: By removing unnecessary components in the final stage, you reduce the attack surface and enhance the security of your Docker images.
+   3. Isolation of Build Dependencies: Build dependencies and tools are isolated to the build stage, ensuring that only the necessary artifacts are included in the final image.
+
+   4. Improved Security: By removing unnecessary components in the final stage, you reduce the attack surface and enhance the security of your Docker images.
 
 Each stage in the Dockerfile will generate its container image. However, when the build process concludes, Docker consolidates only one of these images into the local container registry (default image = final stage).If you prefer to use the image from a different stage, you can specify the target stage using the ``target=<stage name>`` option with the ``docker build`` command.
 
-Example
-~~~~~~~
+**Example**
 ::
 
    # Build Stage
@@ -588,6 +602,37 @@ Example
 
 This example demonstrates a Node.js application where the build stage installs dependencies, builds the application, and the final stage copies only the **necessary artifacts** to an Nginx base image, Hence, resulting in a more smaller and optimized image.
 
+3. Minimize Image Layers
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Combining RUN Instructions: Combine multiple RUN instructions into a single instruction, using && or \ to concatenate commands. This reduces the number of layers in the image, improving build performance and reducing image size. for example::
+
+   RUN npm install \
+    && npm run build
+
+This means that both commands will be executed in the same layer, reducing the number of layers in the resulting image.
+
+- Cleaning Up: Remove unnecessary files and artifacts within the same layer where they are created. This can be achieved using the && operator within a single RUN instruction. Cleaning up unnecessary files reduces the size of the image. for example::
+
+   RUN npm install \
+    && npm prune --production
+    # Cleanup unnecessary files (e.g., development dependencies)
+
+We use the ``&&`` to combine the ``npm install`` and the subsequent cleanup command ``npm prune --production`` within the same RUN instruction. This ensures that unnecessary development dependencies are removed immediately after installing the production dependencies.
+
+4. Parallelize Builds
+~~~~~~~~~~~~~~~~~~~~~
+
+- Docker BuildKit: Introduced in Docker 18.09, enables parallel builds and better resource utilization. It allows for concurrent execution of independent build stages, resulting in faster build times. For projects with multiple build stages that are independent of each other, consider parallelizing these stages. This can be achieved by running separate build processes for different stages simultaneously.
+
+To learn more about this, refer to the `docker buildkit <https://docs.docker.com/build/buildkit/>`__.
+
+5. Minimize Build Context
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- The build context includes files and directories that are sent to the Docker daemon during the build process. Minimize the size of the build context by excluding unnecessary files or utilizing .dockerignore to exclude files and directories that don't contribute to the build.
+
+- For large projects, consider using a remote build context rather than sending all files to the Docker daemon. This can be achieved using the ``docker build - < Dockerfile`` allowing the Dockerfile to be read from stdin. To learn in more depth about this, visit `docker remote content <https://docs.docker.com/build/building/context/#remote-context>`__.
 
 Common Troubleshooting
 ----------------------
