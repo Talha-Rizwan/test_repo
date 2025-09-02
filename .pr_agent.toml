@@ -1,13 +1,17 @@
 # Qodo (PR Agent) Configuration
 # Place this file in your repository root as .pr_agent.toml
 
+[config]
+# Disable auto feedback which might trigger suggestions
+disable_auto_feedback = true
+
 [github_app]
 # Only run review command when PR is opened/reopened/ready for review
 pr_commands = [
-    "/review"
+    "/review --pr_code_suggestions.num_code_suggestions_per_chunk=0"
 ]
 
-# Disable push trigger commands (no auto-suggestions on new commits)
+# Disable push trigger commands completely
 handle_push_trigger = false
 push_commands = []
 
@@ -23,11 +27,26 @@ persistent_comment = true
 final_update_message = true
 
 [pr_code_suggestions]
-# Disable code suggestions completely
+# Completely disable all code suggestions
 commitable_code_suggestions = false
 focus_only_on_problems = false
 publish_output_no_suggestions = false
 apply_suggestions_checkbox = false
 auto_extended_mode = false
 num_code_suggestions_per_chunk = 0
-suggestions_score_threshold = 10  # Set very high to effectively disable
+max_number_of_calls = 0
+parallel_calls = false
+suggestions_score_threshold = 100  # Impossibly high threshold
+enable_help_text = false
+enable_chat_text = false
+persistent_comment = false
+demand_code_suggestions_self_review = false
+
+[pr_improve_component]
+# Disable component improvements
+num_code_suggestions = 0
+
+[pr_custom_prompt]
+# Disable custom prompts that might generate suggestions
+suggestions_score_threshold = 100
+num_code_suggestions_per_chunk = 0
