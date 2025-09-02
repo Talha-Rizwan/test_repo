@@ -1,7 +1,33 @@
-[pr_reviewer]
-# Enable PR review functionality
-enable_review = true
+# Qodo (PR Agent) Configuration
+# Place this file in your repository root as .pr_agent.toml
 
-[pr_code_suggestions] 
-# Disable code suggestions
-enable_code_suggestions = false
+[github_app]
+# Only run review command when PR is opened/reopened/ready for review
+pr_commands = [
+    "/review"
+]
+
+# Disable push trigger commands (no auto-suggestions on new commits)
+handle_push_trigger = false
+push_commands = []
+
+[pr_reviewer]
+# Enable PR review features
+require_score_review = false
+require_tests_review = true
+require_estimate_effort_to_review = true
+require_security_review = true
+require_ticket_analysis_review = true
+publish_output_no_suggestions = true
+persistent_comment = true
+final_update_message = true
+
+[pr_code_suggestions]
+# Disable code suggestions completely
+commitable_code_suggestions = false
+focus_only_on_problems = false
+publish_output_no_suggestions = false
+apply_suggestions_checkbox = false
+auto_extended_mode = false
+num_code_suggestions_per_chunk = 0
+suggestions_score_threshold = 10  # Set very high to effectively disable
