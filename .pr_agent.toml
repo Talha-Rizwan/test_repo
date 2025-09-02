@@ -1,0 +1,35 @@
+[pr_reviewer]
+# Enable PR review functionality
+enable_review = true
+
+# Disable automatic features
+enable_auto_approval = false
+
+# Configure review behavior - only provide reviews
+num_code_suggestions = 0
+inline_code_comments = true
+persistent_comment_pr_review = true
+
+[pr_description]
+# Disable PR description updates
+enable_pr_description = false
+
+[pr_code_suggestions] 
+# Disable code suggestions
+enable_code_suggestions = false
+
+[pr_questions]
+# Disable PR questions
+enable_pr_questions = false
+
+[pr_similar_issue]
+# Disable similar issue detection
+enable_pr_similar_issue = false
+
+[pr_update_changelog]
+# Disable changelog updates
+enable_pr_update_changelog = false
+
+[pr_improve]
+# Disable PR improvements/suggestions
+enable_pr_improve = false
