@@ -1,7 +1,12 @@
 name: CI — Summary via Check Suite
 
 on:
-  check_suite:
+  workflow_run:
+    workflows:
+      - "Code Quality Check"
+      - "Run Backend Unittests"
+      - "Commitlint"
+      - "Enforce Branch Naming Convention"
     types: [completed]
 
 permissions:
