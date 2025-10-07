@@ -1,0 +1,104 @@
+name: CI — Summary via Check Suite
+
+on:
+  check_suite:
+    types: [completed]
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+
+concurrency:
+  group: checksuite-${{ github.event.check_suite.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  summarize-and-notify:
+    if: >-
+      ${{ github.event.check_suite.app.name == 'GitHub Actions' &&
+          (github.event.check_suite.pull_requests && github.event.check_suite.pull_requests[0]) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine head SHA
+        id: head
+        run: |
+          echo "head_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_SHA: ${{ github.event.check_suite.head_sha }}
+
+      - name: Gather workflow runs for this commit
+        id: gather
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head_sha = process.env['INPUT_HEAD_SHA'];
+            if (!head_sha) {
+              core.setOutput('should_post','false');
+              core.setOutput('reason','no head_sha found');
+              return;
+            }
+
+            const resp = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              head_sha,
+              per_page: 200
+            });
+            const runs = resp.data.workflow_runs || [];
+
+            const notCompleted = runs.filter(r => r.status !== 'completed');
+            if (notCompleted.length > 0) {
+              core.info(`Still running: ${notCompleted.length}`);
+              core.setOutput('should_post','false');
+              core.setOutput('reason','waiting for other runs to complete');
+              return;
+            }
+
+            const summary = runs.map(r => ({
+              name: r.name || r.workflow_id,
+              conclusion: r.conclusion,
+              html_url: r.html_url
+            }));
+
+            core.setOutput('should_post','true');
+            core.setOutput('summary_text', summary.map(s => `• ${s.name}: ${s.conclusion} — ${s.html_url}`).join("\n"));
+        env:
+          INPUT_HEAD_SHA: ${{ steps.head.outputs.head_sha }}
+
+      - name: Post summary to Slack
+        if: steps.gather.outputs.should_post == 'true'
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}
+          payload: |
+            {
+              "channel": "C09CMGJ3XNW",
+              "text": "CI summary for commit `${{ steps.head.outputs.head_sha }}`",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*CI Summary* for commit `<https://github.com/${{ github.repository }}/commit/${{ steps.head.outputs.head_sha }}|${{ steps.head.outputs.head_sha }}>`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.gather.outputs.summary_text }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Finished (no-op)
+        if: steps.gather.outputs.should_post != 'true'
+        env:
+          REASON: ${{ steps.gather.outputs.reason }}
+        run: |
+          echo "No Slack post yet (reason: ${REASON:-waiting})"
