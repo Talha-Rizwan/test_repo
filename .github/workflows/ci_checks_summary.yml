@@ -40,6 +40,8 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const head_sha = process.env['INPUT_HEAD_SHA'];
+            const currentRunId = parseInt(process.env['CURRENT_RUN_ID'] || '0', 10);
+            const currentWorkflow = process.env['CURRENT_WORKFLOW'];
             if (!head_sha) {
               core.setOutput('should_post','false');
               core.setOutput('reason','no head_sha found');
@@ -54,7 +56,10 @@ jobs:
             });
             const runs = resp.data.workflow_runs || [];
 
-            const notCompleted = runs.filter(r => r.status !== 'completed');
+            // Exclude this summary workflow's own run so we don't block on ourselves
+            const relevantRuns = runs.filter(r => r.id !== currentRunId && r.name !== currentWorkflow);
+
+            const notCompleted = relevantRuns.filter(r => r.status !== 'completed');
             if (notCompleted.length > 0) {
               core.info(`Still running: ${notCompleted.length}`);
               core.setOutput('should_post','false');
@@ -62,7 +67,7 @@ jobs:
               return;
             }
 
-            const summary = runs.map(r => ({
+            const summary = relevantRuns.map(r => ({
               name: r.name || r.workflow_id,
               conclusion: r.conclusion,
               html_url: r.html_url
@@ -72,6 +77,8 @@ jobs:
             core.setOutput('summary_text', summary.map(s => `• ${s.name}: ${s.conclusion} — ${s.html_url}`).join("\n"));
         env:
           INPUT_HEAD_SHA: ${{ steps.head.outputs.head_sha }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          CURRENT_WORKFLOW: ${{ github.workflow }}
 
       - name: Post summary to Slack
         if: steps.gather.outputs.should_post == 'true'
