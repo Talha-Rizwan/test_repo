@@ -1,0 +1,111 @@
+name: PR Review Alert
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: pr-alert-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  slack-alert:
+    if: ${{ github.event.action == 'labeled'}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debounce multiple label events
+        run: sleep ${{ secrets.DEBOUNCE_SLEEP_SECONDS }}
+      - name: Post only from latest run for this PR
+        id: latest_guard
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number='${{ github.event.pull_request.number }}'
+          api_url="https://api.github.com/repos/${{ github.repository }}/actions/workflows/pr_alert.yml/runs?event=pull_request&per_page=50"
+          latest_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$api_url" \
+            | jq -r --arg pr "$pr_number" '
+                .workflow_runs
+                | map(select(.pull_requests | any(.number == ($pr|tonumber))))
+                | sort_by(.created_at)
+                | last
+                | .id')
+          if [ "$latest_id" = "${GITHUB_RUN_ID}" ]; then
+            echo "IS_LATEST=true" >> $GITHUB_ENV
+          else
+            echo "IS_LATEST=false" >> $GITHUB_ENV
+          fi
+      - name: Extract All Labels
+        id: labels
+        run: |
+          all_labels=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+            | jq -r '.[].name' \
+            | paste -sd "," -)
+          echo "labels=$all_labels" >> $GITHUB_ENV
+          # Build a styled labels string: render each label as inline code and separate with bullets
+          labels_styled=$(echo '${{ toJson(github.event.pull_request.labels) }}' \
+            | jq -r '[.[].name | "`" + . + "`"] | join("   •   ")')
+          echo "labels_styled=$labels_styled" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
+          echo "OWNER=${{ github.repository_owner }}" >> $GITHUB_ENV
+
+      - name: Send Slack Message
+        if: ${{ env.IS_LATEST == 'true' }}
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: C09CMGJ3XNW   # sophia-pr-alerts
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "BE - PR Review Alert",
+                    "emoji": true
+                  }
+                },
+                { "type": "divider" },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*PR Title:* ${{ github.event.pull_request.title }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Labels:* ${{ env.labels_styled }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View PR",
+                        "emoji": true
+                      },
+                      "url": "${{ github.event.pull_request.html_url }}"
+                    },
+                    {
+                      "type": "button",
+                      "action_id": "merge_pr",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "Merge PR",
+                        "emoji": true
+                      },
+                      "style": "primary",
+                      "value": "{\"pull_number\":${{ env.PR_NUMBER }},\"repo\":\"${{ env.REPO_NAME }}\",\"owner\":\"${{ env.OWNER }}\"}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}

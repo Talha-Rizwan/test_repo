@@ -1,0 +1,133 @@
+name: PR Checks Notifier
+
+on:
+  workflow_run:
+    types: [completed]
+
+concurrency:
+  group: pr-checks-notifier-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  notify-on-failed-checks:
+    # Only for PR-triggered workflows, skip self to avoid loops
+    if: >-
+      ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow.name != 'PR Checks Notifier' }}
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Extract PR info from workflow_run
+        id: pr_info
+        run: |
+          head_sha='${{ github.event.workflow_run.head_sha }}'
+          echo "HEAD_SHA=$head_sha" >> $GITHUB_ENV
+          # Prefer PR data from the event payload
+          pr_number=$(echo '${{ toJson(github.event.workflow_run.pull_requests) }}' | jq -r '.[0].number // empty')
+          if [ -z "$pr_number" ]; then
+            # Fallback: look up open PRs by head SHA
+            pr_number=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/$head_sha/pulls" \
+              | jq -r '.[0].number // empty')
+          fi
+          if [ -z "$pr_number" ]; then
+            echo "No PR found for head_sha $head_sha; exiting." 
+            echo "HAS_PR=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "HAS_PR=true" >> $GITHUB_ENV
+          echo "PR_NUMBER=$pr_number" >> $GITHUB_ENV
+
+      - name: Exit if not a PR
+        if: env.HAS_PR != 'true'
+        run: echo "Skipping notify; no associated PR."
+
+      - name: Wait for all checks on this commit to finish
+        if: env.HAS_PR == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REF="$HEAD_SHA"
+          max_attempts=20
+          attempt=1
+          sleep_between=10
+          while [ $attempt -le $max_attempts ]; do
+            resp=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/$REF/check-runs?per_page=100")
+            total=$(echo "$resp" | jq -r '.total_count')
+            if [ "$total" = "0" ] || [ "$total" = "null" ]; then
+              # Some workflows may not create check-runs; break to avoid endless wait
+              echo "No check-runs found (attempt $attempt)."
+              break
+            fi
+            in_progress=$(echo "$resp" | jq -r '[.check_runs[] | select(.status != "completed")] | length')
+            if [ "$in_progress" = "0" ]; then
+              echo "All check-runs completed."
+              echo "$resp" > check_runs.json
+              break
+            fi
+            echo "Attempt $attempt/$max_attempts: $in_progress checks still in progress; waiting $sleep_between seconds..."
+            sleep $sleep_between
+            attempt=$((attempt+1))
+          done
+          if [ ! -f check_runs.json ]; then
+            # Fetch one last time
+            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/$REF/check-runs?per_page=100" > check_runs.json
+          fi
+
+      - name: Determine failing checks and build Slack payload
+        if: env.HAS_PR == 'true'
+        id: build_payload
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          # Parse failures from check_runs.json
+          failures=$(jq -r '[.check_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "neutral")) | {name: .name, conclusion: .conclusion, url: .html_url}]' check_runs.json)
+          num_failures=$(echo "$failures" | jq -r 'length')
+          echo "NUM_FAILURES=$num_failures" >> $GITHUB_ENV
+          if [ "$num_failures" -eq 0 ]; then
+            echo "No failing checks; nothing to notify."
+            exit 0
+          fi
+
+          pr_api="https://api.github.com/repos/$REPO/pulls/$PR_NUMBER"
+          pr=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" "$pr_api")
+          pr_title=$(echo "$pr" | jq -r '.title')
+          pr_url=$(echo "$pr" | jq -r '.html_url')
+          author=$(echo "$pr" | jq -r '.user.login')
+
+          fail_blocks=$(echo "$failures" | jq -r '
+            map({
+              type: "section",
+              text: { type: "mrkdwn", text: ("• *" + .name + "* → " + (.conclusion // "unknown") + "\n<" + .url + "|View details>") }
+            })')
+
+          # Compose Slack payload
+          jq -n --arg title "$pr_title" --arg url "$pr_url" --arg author "$author" --argjson fails "$fail_blocks" --arg prnum "$PR_NUMBER" '{
+            blocks: (
+              [
+                {type:"header", text:{type:"plain_text", text:"PR Checks Failed", emoji:true}},
+                {type:"divider"},
+                {type:"section", text:{type:"mrkdwn", text:("*PR #"+$prnum+":* <"+$url+"|"+$title+"> by @"+$author)}},
+                {type:"section", text:{type:"mrkdwn", text:"Some required checks did not pass:"}}
+              ] + $fails
+            )
+          }' > slack_payload.json
+          echo "payload=$(jq -c . slack_payload.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Send Slack notification for failing checks
+        if: env.HAS_PR == 'true' && env.NUM_FAILURES != '0'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: C09CMGJ3XNW
+          payload: ${{ steps.build_payload.outputs.payload }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}
+        continue-on-error: false
+
+
+
