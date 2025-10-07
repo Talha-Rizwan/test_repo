@@ -15,14 +15,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: checksuite-${{ github.event.check_suite.head_sha }}
+  group: checksuite-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
   summarize-and-notify:
     if: >-
-      ${{ github.event.check_suite.app.name == 'GitHub Actions' &&
-          (github.event.check_suite.pull_requests && github.event.check_suite.pull_requests[0]) }}
+      ${{ github.event.workflow_run.event == 'pull_request' &&
+          (github.event.workflow_run.pull_requests && github.event.workflow_run.pull_requests[0]) }}
     runs-on: ubuntu-latest
     steps:
       - name: Determine head SHA
@@ -30,7 +30,7 @@ jobs:
         run: |
           echo "head_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
         env:
-          GITHUB_SHA: ${{ github.event.check_suite.head_sha }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
 
       - name: Gather workflow runs for this commit
         id: gather
