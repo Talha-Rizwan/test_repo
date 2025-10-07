@@ -88,7 +88,7 @@ jobs:
           token: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}
           payload: |
             {
-              "channel": "C09CMGJ3XNW",
+              "channel": "C09KZ76KY0G",
               "text": "CI summary for commit `${{ steps.head.outputs.head_sha }}`",
               "blocks": [
                 {
