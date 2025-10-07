@@ -1,0 +1,41 @@
+name: Enforce Branch Naming Convention
+
+on:
+  push:
+    branches-ignore:
+      - "main"
+      - "dev"
+      - "stage"
+      - "release/**"
+  pull_request:
+    branches-ignore:
+      - "main"
+      - "dev"
+      - "stage"
+      - "release/**"
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch name format
+        run: |
+          # Determine the branch name depending on event type
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            BRANCH_NAME="${{ github.ref_name }}"
+          else
+            BRANCH_NAME="${{ github.head_ref }}"
+          fi
+          echo "🔍 Checking branch: $BRANCH_NAME"
+
+          # Validate naming pattern
+          if [[ ! "$BRANCH_NAME" =~ ^[a-z0-9._-]+\/(feat|fix|bugfix|hotfix|chore|refactor|style|docs|perf|test|build|ci|ops|temp|cd)\/[A-Z]+-[0-9]+_[a-z0-9._-]+$ ]]; then
+            echo "❌ Invalid branch name: '$BRANCH_NAME'"
+            echo "✅ Expected format: <name>/<commit-type>/<JIRA-ID>_<short_description>"
+            echo ""
+            echo "🔧 Allowed commit types: feat, fix, bugfix, hotfix, chore, refactor, style, docs, perf, test, build, ci, ops, temp, cd"
+            echo "📌 Example: afaq/feat/SOP-51_add-github-commitlint-workflow"
+            exit 1
+          fi
+          echo "✅ Branch name '$BRANCH_NAME' is valid"
