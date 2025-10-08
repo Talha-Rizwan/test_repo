@@ -14,7 +14,7 @@ jobs:
   check-and-notify:
     runs-on: ubuntu-latest
     # Only for PR events, skip this notifier itself, and notify only on true failures
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.name != 'Workflow Status Alert' && github.event.workflow_run.conclusion == 'failure'
+    if: (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push' && github.event.workflow_run.name == 'Enforce Branch Naming Convention') && github.event.workflow_run.name != 'Workflow Status Alert' && github.event.workflow_run.conclusion == 'failure'
     steps:
       - name: Debounce multiple workflow completion events
         run: sleep 20
@@ -138,14 +138,6 @@ jobs:
                   { "type": "mrkdwn", "text": ${{ toJson(env.WORKFLOW_FIELD) }} },
                   { "type": "mrkdwn", "text": ${{ toJson(env.STATUS_FIELD) }} }
                 ]},
-                { "type": "divider" },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": ${{ toJson(env.RUN_LINE) }}
-                  }
-                },
                 {
                   "type": "actions",
                   "elements": [
@@ -173,4 +165,3 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}
-
