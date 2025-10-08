@@ -136,36 +136,13 @@ jobs:
           echo "PR_URL=$pr_url" >> $GITHUB_ENV
           echo "PR_AUTHOR=$pr_author" >> $GITHUB_ENV
 
-      - name: Ensure this is the latest run for this commit
-        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true'
-        id: latest_guard
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          head_sha="${{ env.HEAD_SHA }}"
-          api_url="https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow_summary.yml/runs?per_page=50"
-          
-          latest_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" "$api_url" \
-            | jq -r --arg sha "$head_sha" '
-                .workflow_runs
-                | map(select(.head_sha == $sha))
-                | sort_by(.created_at)
-                | last
-                | .id')
-          
-          if [ "$latest_id" = "${{ github.run_id }}" ]; then
-            echo "IS_LATEST=true" >> $GITHUB_ENV
-          else
-            echo "IS_LATEST=false" >> $GITHUB_ENV
-            echo "Not the latest run for this commit, skipping notification"
-          fi
+      # Removed latest-run guard. Rely on ALL_COMPLETED + concurrency to avoid duplicates.
 
       - name: Send Slack Summary
-        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true' && env.IS_LATEST == 'true'
+        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true'
         uses: slackapi/slack-github-action@v1.24.0
         with:
-          channel-id: C09CMGJ3XNW   # sophia-pr-alerts
+          channel-id: C09KZ76KY0G   # test-channel
           payload: |
             {
               "blocks": [
