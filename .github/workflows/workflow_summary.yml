@@ -71,9 +71,7 @@ jobs:
       - name: Prepare Slack text blocks
         if: env.HAS_PR == 'true'
         run: |
-          pr_block="*PR #${PR_NUMBER}:* ${PR_TITLE}
-*Author:* @${PR_AUTHOR}
-*Commit:* `${HEAD_SHA}`"
+          pr_block="*PR #${PR_NUMBER}:* ${PR_TITLE}\n*Author:* @${PR_AUTHOR}\n*Commit:* \`${HEAD_SHA}\`"
           case "${WF_CONCLUSION}" in
             success) status_emoji="✅"; status_word="Passed" ;;
             failure) status_emoji="❌"; status_word="Failed" ;;
@@ -81,8 +79,7 @@ jobs:
             skipped) status_emoji="⏭️"; status_word="Skipped" ;;
             *) status_emoji="⚠️"; status_word="${WF_CONCLUSION}" ;;
           esac
-          summary_block="*Workflow:* ${WF_NAME}
-*Status:* ${status_emoji} ${status_word}"
+          summary_block="*Workflow:* ${WF_NAME}\n*Status:* ${status_emoji} ${status_word}"
           details_block="*Run:* <${WF_URL}|View run>"
           echo "PR_BLOCK<<EOF" >> $GITHUB_ENV
           echo "$pr_block" >> $GITHUB_ENV
