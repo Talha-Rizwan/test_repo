@@ -8,6 +8,8 @@ on:
       - "Commitlint"
       - "Enforce Branch Naming Convention"
     types: [completed]
+    branches:
+      - '**'
 
 permissions:
   actions: read
@@ -15,42 +17,112 @@ permissions:
   contents: read
   pull-requests: read
 
+# Prevent multiple summary workflows for the same commit
 concurrency:
-  group: checksuite-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: true
+  group: ci-summary-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
 
 jobs:
   summarize-and-notify:
     if: >-
       ${{ github.event.workflow_run.event == 'pull_request' &&
-          (github.event.workflow_run.pull_requests && github.event.workflow_run.pull_requests[0]) }}
+          github.event.workflow_run.pull_requests[0] }}
     runs-on: ubuntu-latest
     steps:
       - name: Determine head SHA and PR info
         id: head
         run: |
-          echo "head_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "🔍 CI Summary workflow triggered"
+          echo "Workflow run event: ${{ github.event.workflow_run.event }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Triggering workflow: ${{ github.event.workflow_run.name }}"
+
+          if [ -n "${{ github.event.workflow_run.pull_requests[0] }}" ]; then
+            echo "PR Number: ${{ github.event.workflow_run.pull_requests[0].number }}"
+            echo "head_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+            echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          else
+            echo "❌ No PR information found, exiting"
+            exit 1
+          fi
         env:
           GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
           PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
 
       - name: Wait for all workflows to complete
         id: wait
-        uses: fountainhead/action-wait-for-check@v1.2.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: |
-            Code Quality Check
-            Run Django Unittests
-            Commitlint
-            Enforce Branch Naming Convention
-          ref: ${{ github.event.workflow_run.head_sha }}
-          timeoutSeconds: 200
-          intervalSeconds: 30
+        run: |
+          echo "⏳ Waiting for all required workflows to complete..."
+          echo "Target workflows: Code Quality Check, Run Backend Unittests, Commitlint, Enforce Branch Naming Convention"
+          echo "Commit SHA: ${{ github.event.workflow_run.head_sha }}"
+
+          # Wait up to 10 minutes for all workflows to complete
+          max_attempts=3
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "🔄 Check attempt $attempt of $max_attempts"
+
+            # Get all workflow runs for this commit
+            runs_response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs?head_sha=${{ github.event.workflow_run.head_sha }}&per_page=100")
+
+            # Check if all required workflows are completed
+            missing_workflows=""
+
+            # Check Code Quality Check
+            if ! echo "$runs_response" | jq -e '.workflow_runs[] | select(.name == "Code Quality Check" and .status == "completed")' > /dev/null; then
+              missing_workflows="$missing_workflows Code Quality Check"
+            fi
+
+            # Check Run Backend Unittests
+            if ! echo "$runs_response" | jq -e '.workflow_runs[] | select(.name == "Run Backend Unittests" and .status == "completed")' > /dev/null; then
+              missing_workflows="$missing_workflows Run Backend Unittests"
+            fi
+
+            # Check Commitlint
+            if ! echo "$runs_response" | jq -e '.workflow_runs[] | select(.name == "Commitlint" and .status == "completed")' > /dev/null; then
+              missing_workflows="$missing_workflows Commitlint"
+            fi
+
+            # Check Enforce Branch Naming Convention
+            if ! echo "$runs_response" | jq -e '.workflow_runs[] | select(.name == "Enforce Branch Naming Convention" and .status == "completed")' > /dev/null; then
+              missing_workflows="$missing_workflows Enforce Branch Naming Convention"
+            fi
+
+            # Check if any workflows are still running (not completed)
+            running_workflows=$(echo "$runs_response" | jq -r '.workflow_runs[] | select(.status != "completed") | .name' | sort | uniq)
+
+            if [ -n "$running_workflows" ]; then
+              echo "⏳ Still running workflows: $running_workflows"
+              missing_workflows="$missing_workflows $running_workflows"
+            fi
+
+            # If no missing workflows, we're done
+            if [ -z "$missing_workflows" ]; then
+              echo "✅ All workflows completed!"
+              echo "completed=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "⏳ Still waiting for:$missing_workflows"
+
+            # Wait before next check (30 seconds)
+            if [ $attempt -lt $max_attempts ]; then
+              sleep 30
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ Timeout waiting for workflows to complete"
+          echo "completed=false" >> $GITHUB_OUTPUT
+          exit 1
 
       - name: Gather workflow results
         id: gather
+        if: steps.wait.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
@@ -82,12 +154,13 @@ jobs:
               'Enforce Branch Naming Convention'
             ];
 
-            // Filter for relevant completed runs
+            // Filter for relevant completed runs with conclusions
             const relevantRuns = runs.filter(r =>
               r.id !== currentRunId &&
               targetWorkflows.includes(r.name) &&
               r.status === 'completed' &&
-              r.conclusion
+              r.conclusion &&
+              ['success', 'failure', 'cancelled', 'skipped'].includes(r.conclusion)
             );
 
             if (relevantRuns.length === 0) {
@@ -96,14 +169,14 @@ jobs:
               return;
             }
 
-            // Check if all target workflows have completed
+            // Double-check that all target workflows are present and completed
             const completedWorkflows = new Set(relevantRuns.map(r => r.name));
             const missingWorkflows = targetWorkflows.filter(w => !completedWorkflows.has(w));
 
             if (missingWorkflows.length > 0) {
-              core.info(`Still waiting for: ${missingWorkflows.join(', ')}`);
+              core.info(`Still missing completed workflows: ${missingWorkflows.join(', ')}`);
               core.setOutput('should_post','false');
-              core.setOutput('reason',`waiting for workflows: ${missingWorkflows.join(', ')}`);
+              core.setOutput('reason',`missing completed workflows: ${missingWorkflows.join(', ')}`);
               return;
             }
 
@@ -125,6 +198,8 @@ jobs:
             const total = relevantRuns.length;
             core.setOutput('failure_count', failures.toString());
             core.setOutput('total_count', total.toString());
+
+            core.info(`Found ${relevantRuns.length} completed workflows: ${relevantRuns.map(r => r.name).join(', ')}`);
         env:
           INPUT_HEAD_SHA: ${{ steps.head.outputs.head_sha }}
           CURRENT_RUN_ID: ${{ github.run_id }}
@@ -177,6 +252,13 @@ jobs:
                 }
               ]
             }
+        continue-on-error: true
+
+      - name: Slack notification result
+        if: steps.gather.outputs.should_post == 'true'
+        run: |
+          echo "📤 Slack notification step completed"
+          echo "Note: Check the step logs above to see if notification was sent successfully"
 
       - name: Finished (no-op)
         if: steps.gather.outputs.should_post != 'true'
