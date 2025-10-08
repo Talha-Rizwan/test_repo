@@ -13,6 +13,7 @@ permissions:
   actions: read
   checks: read
   contents: read
+  pull-requests: read
 
 concurrency:
   group: checksuite-${{ github.event.workflow_run.head_sha }}
@@ -25,108 +26,108 @@ jobs:
           (github.event.workflow_run.pull_requests && github.event.workflow_run.pull_requests[0]) }}
     runs-on: ubuntu-latest
     steps:
-      - name: Determine head SHA
+      - name: Determine head SHA and PR info
         id: head
         run: |
           echo "head_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
         env:
           GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
 
-      - name: Wait to prevent race conditions
-        run: |
-          # Add a small delay to prevent race conditions when multiple workflows complete simultaneously
-          sleep 10
+      - name: Wait for all workflows to complete
+        id: wait
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: |
+            Code Quality Check
+            Run Django Unittests
+            Commitlint
+            Enforce Branch Naming Convention
+          ref: ${{ github.event.workflow_run.head_sha }}
+          timeoutSeconds: 200
+          intervalSeconds: 30
 
-      - name: Gather workflow runs for this commit
+      - name: Gather workflow results
         id: gather
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const head_sha = process.env['INPUT_HEAD_SHA'];
             const currentRunId = parseInt(process.env['CURRENT_RUN_ID'] || '0', 10);
-            const currentWorkflow = process.env['CURRENT_WORKFLOW'];
-            const expectedWorkflows = process.env['EXPECTED_WORKFLOWS'].split(',');
-            
+
             if (!head_sha) {
               core.setOutput('should_post','false');
               core.setOutput('reason','no head_sha found');
               return;
             }
 
-            const resp = await github.rest.actions.listWorkflowRunsForRepo({
+            // Get all workflow runs for this commit
+            const runsResponse = await github.rest.actions.listWorkflowRunsForRepo({
               owner,
               repo,
               head_sha,
-              per_page: 200
+              per_page: 100
             });
-            const runs = resp.data.workflow_runs || [];
+            const runs = runsResponse.data.workflow_runs || [];
 
-            // Filter to only the expected workflows and exclude this summary workflow
-            const relevantRuns = runs.filter(r => 
-              r.id !== currentRunId && 
-              r.name !== currentWorkflow &&
-              expectedWorkflows.includes(r.name)
+            // Define the workflows we're interested in
+            const targetWorkflows = [
+              'Code Quality Check',
+              'Run Backend Unittests',
+              'Commitlint',
+              'Enforce Branch Naming Convention'
+            ];
+
+            // Filter for relevant completed runs
+            const relevantRuns = runs.filter(r =>
+              r.id !== currentRunId &&
+              targetWorkflows.includes(r.name) &&
+              r.status === 'completed' &&
+              r.conclusion
             );
 
-            // Check if all expected workflows have completed
-            const completedRuns = relevantRuns.filter(r => r.status === 'completed');
-            const notCompleted = relevantRuns.filter(r => r.status !== 'completed');
-            
-            core.info(`Expected workflows: ${expectedWorkflows.join(', ')}`);
-            core.info(`Found ${completedRuns.length} completed, ${notCompleted.length} still running`);
-            
-            if (notCompleted.length > 0) {
-              core.info(`Still running: ${notCompleted.map(r => r.name).join(', ')}`);
+            if (relevantRuns.length === 0) {
               core.setOutput('should_post','false');
-              core.setOutput('reason','waiting for other runs to complete');
+              core.setOutput('reason','no relevant workflow runs found');
               return;
             }
 
-            // Check if we have all expected workflows
-            const completedWorkflowNames = completedRuns.map(r => r.name);
-            const missingWorkflows = expectedWorkflows.filter(name => !completedWorkflowNames.includes(name));
-            
+            // Check if all target workflows have completed
+            const completedWorkflows = new Set(relevantRuns.map(r => r.name));
+            const missingWorkflows = targetWorkflows.filter(w => !completedWorkflows.has(w));
+
             if (missingWorkflows.length > 0) {
-              core.info(`Missing workflows: ${missingWorkflows.join(', ')}`);
+              core.info(`Still waiting for: ${missingWorkflows.join(', ')}`);
               core.setOutput('should_post','false');
-              core.setOutput('reason','waiting for missing workflows');
+              core.setOutput('reason',`waiting for workflows: ${missingWorkflows.join(', ')}`);
               return;
             }
 
-            // Check if a summary has already been posted recently (within last 5 minutes)
-            const recentSummaryRuns = runs.filter(r => 
-              r.name === currentWorkflow && 
-              r.status === 'completed' && 
-              r.conclusion === 'success' &&
-              new Date(r.created_at) > new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
-            );
-            
-            if (recentSummaryRuns.length > 0) {
-              core.info(`Summary already posted recently (${recentSummaryRuns.length} runs found)`);
-              core.setOutput('should_post','false');
-              core.setOutput('reason','summary already posted recently');
-              return;
-            }
+            // Create summary with proper status mapping
+            const summary = relevantRuns.map(r => {
+              const status = r.conclusion === 'success' ? '✅ success' :
+                           r.conclusion === 'failure' ? '❌ failure' :
+                           r.conclusion === 'cancelled' ? '🚫 cancelled' :
+                           r.conclusion === 'skipped' ? '⏭️ skipped' : `❓ ${r.conclusion}`;
 
-            // Create summary with proper status formatting
-            const summary = completedRuns.map(r => {
-              const status = r.conclusion === 'success' ? '✅ success' : 
-                           r.conclusion === 'failure' ? '❌ failure' : 
-                           r.conclusion === 'cancelled' ? '⏹️ cancelled' :
-                           r.conclusion === 'skipped' ? '⏭️ skipped' :
-                           `⚠️ ${r.conclusion}`;
-              return `• **${r.name}**: ${status} — [View Details](${r.html_url})`;
+              return `• ${r.name}: ${status} — ${r.html_url}`;
             });
 
             core.setOutput('should_post','true');
             core.setOutput('summary_text', summary.join("\n"));
+
+            // Count failures for the Slack message
+            const failures = relevantRuns.filter(r => r.conclusion === 'failure').length;
+            const total = relevantRuns.length;
+            core.setOutput('failure_count', failures.toString());
+            core.setOutput('total_count', total.toString());
         env:
           INPUT_HEAD_SHA: ${{ steps.head.outputs.head_sha }}
           CURRENT_RUN_ID: ${{ github.run_id }}
-          CURRENT_WORKFLOW: ${{ github.workflow }}
-          EXPECTED_WORKFLOWS: "Code Quality Check,Run Backend Unittests,Commitlint,Enforce Branch Naming Convention"
 
       - name: Post summary to Slack
         if: steps.gather.outputs.should_post == 'true'
@@ -137,24 +138,28 @@ jobs:
           payload: |
             {
               "channel": "C09KZ76KY0G",
-              "text": "CI Summary for commit ${{ steps.head.outputs.head_sha }}",
+              "text": "CI summary for PR #${{ steps.head.outputs.pr_number }} - ${{ steps.gather.outputs.total_count }} checks, ${{ steps.gather.outputs.failure_count }} failed",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🔍 CI Summary"
+                    "text": "🔍 CI Check Results"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Commit: `<https://github.com/${{ github.repository }}/commit/${{ steps.head.outputs.head_sha }}|${{ steps.head.outputs.head_sha }}>`"
+                    "text": "*PR #${{ steps.head.outputs.pr_number }}* <https://github.com/${{ github.repository }}/pull/${{ steps.head.outputs.pr_number }}|${{ github.repository }}#${{ steps.head.outputs.pr_number }}>"
                   }
                 },
                 {
-                  "type": "divider"
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Commit:* <https://github.com/${{ github.repository }}/commit/${{ steps.head.outputs.head_sha }}|${{ steps.head.outputs.head_sha }}>"
+                  }
                 },
                 {
                   "type": "section",
@@ -162,13 +167,18 @@ jobs:
                     "type": "mrkdwn",
                     "text": "${{ steps.gather.outputs.summary_text }}"
                   }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*📊 Summary: ${{ steps.gather.outputs.total_count }} checks completed, ${{ steps.gather.outputs.failure_count }} failures*"
+                  }
                 }
               ]
             }
 
       - name: Finished (no-op)
         if: steps.gather.outputs.should_post != 'true'
-        env:
-          REASON: ${{ steps.gather.outputs.reason }}
         run: |
-          echo "No Slack post yet (reason: ${REASON:-waiting})"
+          echo "No Slack post yet (reason: ${{ steps.gather.outputs.reason }})"
