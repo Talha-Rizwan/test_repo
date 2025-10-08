@@ -136,6 +136,29 @@ jobs:
           echo "PR_URL=$pr_url" >> $GITHUB_ENV
           echo "PR_AUTHOR=$pr_author" >> $GITHUB_ENV
 
+      - name: Prepare Slack text blocks
+        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true'
+        run: |
+          pr_block="*PR #${PR_NUMBER}:* ${PR_TITLE}
+*Author:* @${PR_AUTHOR}
+*Commit:* `${HEAD_SHA}`"
+          summary_block="*Summary:*
+✅ Passed: ${SUCCESS_COUNT}
+❌ Failed: ${FAILURE_COUNT}
+⏹️ Cancelled: ${CANCELLED_COUNT}
+⏭️ Skipped: ${SKIPPED_COUNT}"
+          details_block="*Workflow Results:*
+${WORKFLOW_DETAILS}"
+          echo "PR_BLOCK<<EOF" >> $GITHUB_ENV
+          echo "$pr_block" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "SUMMARY_BLOCK<<EOF" >> $GITHUB_ENV
+          echo "$summary_block" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "DETAILS_BLOCK<<EOF" >> $GITHUB_ENV
+          echo "$details_block" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       # Removed latest-run guard. Rely on ALL_COMPLETED + concurrency to avoid duplicates.
 
       - name: Send Slack Summary
@@ -159,14 +182,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*PR #${{ env.PR_NUMBER }}:* ${{ env.PR_TITLE }}\n*Author:* @${{ env.PR_AUTHOR }}\n*Commit:* `${{ env.HEAD_SHA }}`"
+                    "text": ${{ toJson(env.PR_BLOCK) }}
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Summary:*\n✅ Passed: ${{ env.SUCCESS_COUNT }}\n❌ Failed: ${{ env.FAILURE_COUNT }}\n⏹️ Cancelled: ${{ env.CANCELLED_COUNT }}\n⏭️ Skipped: ${{ env.SKIPPED_COUNT }}"
+                    "text": ${{ toJson(env.SUMMARY_BLOCK) }}
                   }
                 },
                 { "type": "divider" },
@@ -174,7 +197,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Workflow Results:*\n${{ env.WORKFLOW_DETAILS }}"
+                    "text": ${{ toJson(env.DETAILS_BLOCK) }}
                   }
                 },
                 {
