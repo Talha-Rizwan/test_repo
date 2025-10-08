@@ -1,0 +1,230 @@
+name: Workflow Summary Alert
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types:
+      - completed
+
+concurrency:
+  group: workflow-summary-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-notify:
+    runs-on: ubuntu-latest
+    # Only run for pull requests
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Debounce multiple workflow completion events
+        run: sleep 20
+
+      - name: Get PR information
+        id: pr_info
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get PR number from the workflow run
+          pr_number=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.event.workflow_run.pull_requests[0].url }}" \
+            | jq -r '.number')
+          
+          if [ -z "$pr_number" ] || [ "$pr_number" = "null" ]; then
+            echo "No PR found, exiting"
+            echo "HAS_PR=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          echo "PR_NUMBER=$pr_number" >> $GITHUB_ENV
+          echo "HAS_PR=true" >> $GITHUB_ENV
+          echo "HEAD_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+
+      - name: Get all workflow runs for this commit
+        if: env.HAS_PR == 'true'
+        id: workflow_status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          head_sha="${{ env.HEAD_SHA }}"
+          
+          # Get all workflow runs for this commit
+          workflow_runs=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?head_sha=$head_sha&per_page=100")
+          
+          # Filter for pull_request event workflows and check if all are completed
+          all_completed=$(echo "$workflow_runs" | jq -r '
+            [.workflow_runs[] | select(.event == "pull_request")] as $pr_runs |
+            if ($pr_runs | length) == 0 then
+              "false"
+            else
+              ($pr_runs | all(.status == "completed")) | tostring
+            end
+          ')
+          
+          echo "ALL_COMPLETED=$all_completed" >> $GITHUB_ENV
+          
+          if [ "$all_completed" = "true" ]; then
+            # Count success, failure, cancelled, and skipped workflows
+            success_count=$(echo "$workflow_runs" | jq '[.workflow_runs[] | select(.event == "pull_request" and .conclusion == "success")] | length')
+            failure_count=$(echo "$workflow_runs" | jq '[.workflow_runs[] | select(.event == "pull_request" and .conclusion == "failure")] | length')
+            cancelled_count=$(echo "$workflow_runs" | jq '[.workflow_runs[] | select(.event == "pull_request" and .conclusion == "cancelled")] | length')
+            skipped_count=$(echo "$workflow_runs" | jq '[.workflow_runs[] | select(.event == "pull_request" and .conclusion == "skipped")] | length')
+            
+            # Get detailed workflow information
+            workflow_details=$(echo "$workflow_runs" | jq -r '
+              [.workflow_runs[] | select(.event == "pull_request")] |
+              map({
+                name: .name,
+                conclusion: .conclusion,
+                status: .status,
+                url: .html_url
+              }) |
+              sort_by(.name) |
+              map("• *" + .name + "*: " + (
+                if .conclusion == "success" then "✅ Passed"
+                elif .conclusion == "failure" then "❌ Failed"
+                elif .conclusion == "cancelled" then "⏹️ Cancelled"
+                elif .conclusion == "skipped" then "⏭️ Skipped"
+                else "⚠️ " + .conclusion
+                end
+              )) |
+              join("\n")
+            ')
+            
+            # Determine overall status
+            if [ "$failure_count" -gt 0 ]; then
+              overall_status="❌ FAILED"
+              status_color="danger"
+            elif [ "$cancelled_count" -gt 0 ]; then
+              overall_status="⏹️ CANCELLED"
+              status_color="warning"
+            else
+              overall_status="✅ PASSED"
+              status_color="good"
+            fi
+            
+            echo "SUCCESS_COUNT=$success_count" >> $GITHUB_ENV
+            echo "FAILURE_COUNT=$failure_count" >> $GITHUB_ENV
+            echo "CANCELLED_COUNT=$cancelled_count" >> $GITHUB_ENV
+            echo "SKIPPED_COUNT=$skipped_count" >> $GITHUB_ENV
+            echo "OVERALL_STATUS=$overall_status" >> $GITHUB_ENV
+            echo "STATUS_COLOR=$status_color" >> $GITHUB_ENV
+            
+            # Handle multiline output
+            echo "WORKFLOW_DETAILS<<EOF" >> $GITHUB_ENV
+            echo "$workflow_details" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
+      - name: Get PR details
+        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true'
+        id: pr_details
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_data=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ env.PR_NUMBER }}")
+          
+          pr_title=$(echo "$pr_data" | jq -r '.title')
+          pr_url=$(echo "$pr_data" | jq -r '.html_url')
+          pr_author=$(echo "$pr_data" | jq -r '.user.login')
+          
+          echo "PR_TITLE=$pr_title" >> $GITHUB_ENV
+          echo "PR_URL=$pr_url" >> $GITHUB_ENV
+          echo "PR_AUTHOR=$pr_author" >> $GITHUB_ENV
+
+      - name: Ensure this is the latest run for this commit
+        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true'
+        id: latest_guard
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          head_sha="${{ env.HEAD_SHA }}"
+          api_url="https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow_summary.yml/runs?per_page=50"
+          
+          latest_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" "$api_url" \
+            | jq -r --arg sha "$head_sha" '
+                .workflow_runs
+                | map(select(.head_sha == $sha))
+                | sort_by(.created_at)
+                | last
+                | .id')
+          
+          if [ "$latest_id" = "${{ github.run_id }}" ]; then
+            echo "IS_LATEST=true" >> $GITHUB_ENV
+          else
+            echo "IS_LATEST=false" >> $GITHUB_ENV
+            echo "Not the latest run for this commit, skipping notification"
+          fi
+
+      - name: Send Slack Summary
+        if: env.HAS_PR == 'true' && env.ALL_COMPLETED == 'true' && env.IS_LATEST == 'true'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: C09CMGJ3XNW   # sophia-pr-alerts
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "BE - Workflow Summary: ${{ env.OVERALL_STATUS }}",
+                    "emoji": true
+                  }
+                },
+                { "type": "divider" },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*PR #${{ env.PR_NUMBER }}:* ${{ env.PR_TITLE }}\n*Author:* @${{ env.PR_AUTHOR }}\n*Commit:* `${{ env.HEAD_SHA }}`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Summary:*\n✅ Passed: ${{ env.SUCCESS_COUNT }}\n❌ Failed: ${{ env.FAILURE_COUNT }}\n⏹️ Cancelled: ${{ env.CANCELLED_COUNT }}\n⏭️ Skipped: ${{ env.SKIPPED_COUNT }}"
+                  }
+                },
+                { "type": "divider" },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow Results:*\n${{ env.WORKFLOW_DETAILS }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View PR",
+                        "emoji": true
+                      },
+                      "url": "${{ env.PR_URL }}"
+                    },
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflows",
+                        "emoji": true
+                      },
+                      "url": "https://github.com/${{ github.repository }}/actions?query=sha%3A${{ env.HEAD_SHA }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_PR_ALERT_BOT_TOKEN }}
+
