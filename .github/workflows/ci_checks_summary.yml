@@ -32,6 +32,11 @@ jobs:
         env:
           GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Wait to prevent race conditions
+        run: |
+          # Add a small delay to prevent race conditions when multiple workflows complete simultaneously
+          sleep 10
+
       - name: Gather workflow runs for this commit
         id: gather
         uses: actions/github-script@v6
@@ -42,6 +47,8 @@ jobs:
             const head_sha = process.env['INPUT_HEAD_SHA'];
             const currentRunId = parseInt(process.env['CURRENT_RUN_ID'] || '0', 10);
             const currentWorkflow = process.env['CURRENT_WORKFLOW'];
+            const expectedWorkflows = process.env['EXPECTED_WORKFLOWS'].split(',');
+            
             if (!head_sha) {
               core.setOutput('should_post','false');
               core.setOutput('reason','no head_sha found');
@@ -56,29 +63,70 @@ jobs:
             });
             const runs = resp.data.workflow_runs || [];
 
-            // Exclude this summary workflow's own run so we don't block on ourselves
-            const relevantRuns = runs.filter(r => r.id !== currentRunId && r.name !== currentWorkflow);
+            // Filter to only the expected workflows and exclude this summary workflow
+            const relevantRuns = runs.filter(r => 
+              r.id !== currentRunId && 
+              r.name !== currentWorkflow &&
+              expectedWorkflows.includes(r.name)
+            );
 
+            // Check if all expected workflows have completed
+            const completedRuns = relevantRuns.filter(r => r.status === 'completed');
             const notCompleted = relevantRuns.filter(r => r.status !== 'completed');
+            
+            core.info(`Expected workflows: ${expectedWorkflows.join(', ')}`);
+            core.info(`Found ${completedRuns.length} completed, ${notCompleted.length} still running`);
+            
             if (notCompleted.length > 0) {
-              core.info(`Still running: ${notCompleted.length}`);
+              core.info(`Still running: ${notCompleted.map(r => r.name).join(', ')}`);
               core.setOutput('should_post','false');
               core.setOutput('reason','waiting for other runs to complete');
               return;
             }
 
-            const summary = relevantRuns.map(r => ({
-              name: r.name || r.workflow_id,
-              conclusion: r.conclusion,
-              html_url: r.html_url
-            }));
+            // Check if we have all expected workflows
+            const completedWorkflowNames = completedRuns.map(r => r.name);
+            const missingWorkflows = expectedWorkflows.filter(name => !completedWorkflowNames.includes(name));
+            
+            if (missingWorkflows.length > 0) {
+              core.info(`Missing workflows: ${missingWorkflows.join(', ')}`);
+              core.setOutput('should_post','false');
+              core.setOutput('reason','waiting for missing workflows');
+              return;
+            }
+
+            // Check if a summary has already been posted recently (within last 5 minutes)
+            const recentSummaryRuns = runs.filter(r => 
+              r.name === currentWorkflow && 
+              r.status === 'completed' && 
+              r.conclusion === 'success' &&
+              new Date(r.created_at) > new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+            );
+            
+            if (recentSummaryRuns.length > 0) {
+              core.info(`Summary already posted recently (${recentSummaryRuns.length} runs found)`);
+              core.setOutput('should_post','false');
+              core.setOutput('reason','summary already posted recently');
+              return;
+            }
+
+            // Create summary with proper status formatting
+            const summary = completedRuns.map(r => {
+              const status = r.conclusion === 'success' ? '✅ success' : 
+                           r.conclusion === 'failure' ? '❌ failure' : 
+                           r.conclusion === 'cancelled' ? '⏹️ cancelled' :
+                           r.conclusion === 'skipped' ? '⏭️ skipped' :
+                           `⚠️ ${r.conclusion}`;
+              return `• **${r.name}**: ${status} — [View Details](${r.html_url})`;
+            });
 
             core.setOutput('should_post','true');
-            core.setOutput('summary_text', summary.map(s => `• ${s.name}: ${s.conclusion} — ${s.html_url}`).join("\n"));
+            core.setOutput('summary_text', summary.join("\n"));
         env:
           INPUT_HEAD_SHA: ${{ steps.head.outputs.head_sha }}
           CURRENT_RUN_ID: ${{ github.run_id }}
           CURRENT_WORKFLOW: ${{ github.workflow }}
+          EXPECTED_WORKFLOWS: "Code Quality Check,Run Backend Unittests,Commitlint,Enforce Branch Naming Convention"
 
       - name: Post summary to Slack
         if: steps.gather.outputs.should_post == 'true'
@@ -89,14 +137,24 @@ jobs:
           payload: |
             {
               "channel": "C09KZ76KY0G",
-              "text": "CI summary for commit `${{ steps.head.outputs.head_sha }}`",
+              "text": "CI Summary for commit ${{ steps.head.outputs.head_sha }}",
               "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🔍 CI Summary"
+                  }
+                },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*CI Summary* for commit `<https://github.com/${{ github.repository }}/commit/${{ steps.head.outputs.head_sha }}|${{ steps.head.outputs.head_sha }}>`"
+                    "text": "Commit: `<https://github.com/${{ github.repository }}/commit/${{ steps.head.outputs.head_sha }}|${{ steps.head.outputs.head_sha }}>`"
                   }
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
