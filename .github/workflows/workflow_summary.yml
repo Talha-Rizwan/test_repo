@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     # Notify only on true failures.
     # Run for PR workflows OR for the Branch Naming workflow which runs on push.
-    if: (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push') && github.event.workflow_run.name != 'Workflow Status Alert' && github.event.workflow_run.conclusion == 'failure'
+    if: (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push' && github.event.workflow_run.name == 'Enforce Branch Naming Convention') && github.event.workflow_run.name != 'Workflow Status Alert' && github.event.workflow_run.conclusion == 'failure'
     steps:
       - name: Debounce multiple workflow completion events
         run: sleep 20
@@ -80,10 +80,9 @@ jobs:
       - name: Prepare Slack text blocks
         if: env.HAS_PR == 'true'
         run: |
-          short_sha=$(echo "${HEAD_SHA}" | cut -c1-7)
           pr_field="*PR #${PR_NUMBER}:* ${PR_TITLE}"
           author_field="*Author:* @${PR_AUTHOR}"
-          commit_field="*Commit:* \`${short_sha}\`"
+          commit_field="*Commit:* \`${HEAD_SHA}\`"
           case "${WF_CONCLUSION}" in
             success) status_emoji="✅"; status_word="Passed" ;;
             failure) status_emoji="❌"; status_word="Failed" ;;
@@ -148,13 +147,6 @@ jobs:
                   { "type": "mrkdwn", "text": ${{ toJson(env.STATUS_FIELD) }} }
                 ]},
                 { "type": "divider" },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": ${{ toJson(env.RUN_LINE) }}
-                  }
-                },
                 {
                   "type": "actions",
                   "elements": [
